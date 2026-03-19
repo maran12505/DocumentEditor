@@ -1,0 +1,1033 @@
+@page "/documenteditor"
+@using Microsoft.JSInterop
+@using Microsoft.AspNetCore.Components.Forms
+@using System.Text.Json
+@inject IJSRuntime JSRuntime
+@inject HttpClient Http
+
+<style>
+    .avatar { width: 28px; height: 28px; border-radius: 50%; background: linear-gradient(135deg, #2383E2, #062b4f); display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; color: #fff; }
+    .logo {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-weight: 600;
+        font-size: 16px;
+    }
+    .logo-img {
+        width: 28px;
+        height: 28px;
+        object-fit: contain;
+        border-radius: 6px;
+    }
+    .logo-text {
+        font-size: 15px;
+        color: #2f2f2f;
+    }
+</style>
+
+<div class="n-workspace">
+
+    <!-- ══ Top bar ══════════════════════════════════════════════════════════ -->
+    <header class="n-topbar">
+
+        <div class="n-topbar-left">
+            <!-- Left sidebar toggle button -->
+            <button class="n-btn n-btn-ghost n-btn-icon @(_leftPaneOpen ? "active" : "")"
+                    @onclick="ToggleLeftPane"
+                    title="Toggle Panel">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none"
+                     stroke="currentColor" stroke-width="2.2">
+                    <rect x="3" y="3" width="18" height="18" rx="2"/>
+                    <line x1="9" y1="3" x2="9" y2="21"/>
+                </svg>
+            </button>
+
+            <div class="n-divider-v"></div>
+
+            <div class="logo">
+                <img src="@(_isDarkMode ? "images/Logo1.png" : "images/Logo.png")" alt="Logo" class="logo-img" />
+                <span class="logo-text">DEditor</span>
+            </div>
+
+            <div class="n-divider-v"></div>
+            <InputFile id="fileUploadInput" OnChange="HandleFileUpload" accept=".docx,.doc,.rtf,.txt"
+                style="display:none" />
+        </div>
+
+        <div class="n-toolbar-center"></div>
+
+        <div class="n-topbar-right">
+
+            <button class="n-btn n-btn-ghost n-btn-icon @(_navPaneOpen ? "active" : "")"
+                    @onclick="ToggleNavigationPane"
+                    title="Find &amp; Replace (Ctrl+F)">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none"
+                     stroke="currentColor" stroke-width="2.5">
+                    <circle cx="11" cy="11" r="8"/>
+                    <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+                </svg>
+            </button>
+
+            <!-- ── Dark / Light mode toggle ─────────────────────────────── -->
+            <button class="n-btn n-btn-ghost n-btn-icon n-theme-toggle"
+                    @onclick="ToggleTheme"
+                    title="@(_isDarkMode ? "Switch to Light Mode" : "Switch to Dark Mode")">
+                @if (_isDarkMode)
+                {
+                    <!-- Sun icon — shown in dark mode to switch to light -->
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none"
+                         stroke="currentColor" stroke-width="2.2">
+                        <circle cx="12" cy="12" r="5"/>
+                        <line x1="12" y1="1"  x2="12" y2="3"/>
+                        <line x1="12" y1="21" x2="12" y2="23"/>
+                        <line x1="4.22" y1="4.22"  x2="5.64" y2="5.64"/>
+                        <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
+                        <line x1="1"  y1="12" x2="3"  y2="12"/>
+                        <line x1="21" y1="12" x2="23" y2="12"/>
+                        <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/>
+                        <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
+                    </svg>
+                }
+                else
+                {
+                    <!-- Moon icon — shown in light mode to switch to dark -->
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none"
+                         stroke="currentColor" stroke-width="2.2">
+                        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+                    </svg>
+                }
+            </button>
+
+            <button class="n-btn n-btn-ghost n-btn-icon n-track-btn @(_trackChangesEnabled ? "n-track-active" : "")"
+                    @onclick="ToggleTrackChanges"
+                    title="@(_trackChangesEnabled ? "Track Changes ON — click to disable" : "Track Changes OFF — click to enable")">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none"
+                     stroke="currentColor" stroke-width="2">
+                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                </svg>
+                Track
+                @if (_trackChangesEnabled)
+                {
+                    <span class="n-track-dot" title="Track Changes is ON"></span>
+                }
+            </button>
+
+            <div class="n-divider-v"></div>
+
+            <button class="n-btn n-btn-ai @(_chatOpen ? "active" : "")"
+                    @onclick="ToggleChat"
+                    title="Toggle AI Assistant">
+                <span class="n-ai-star">✦</span> AI
+            </button>
+
+            <div class="avatar">U</div>
+        </div>
+
+    </header>
+
+    <!-- ══ Main: Left Sidebar + Editor + AI Sidebar ══════════════════════════ -->
+    <div class="n-main">
+
+        <!-- ── Left Sidebar ──────────────────────────────────────────────── -->
+        @if (_leftPaneOpen)
+        {
+            <aside class="n-left-sidebar">
+
+                <!-- Header -->
+                <div class="n-left-header">
+                    <div class="n-left-title">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
+                             stroke="currentColor" stroke-width="2.2">
+                            <rect x="3" y="3" width="18" height="18" rx="2"/>
+                            <line x1="9" y1="3" x2="9" y2="21"/>
+                        </svg>
+                        Panel
+                    </div>
+                    <button class="n-left-close" @onclick="ToggleLeftPane" title="Close">✕</button>
+                </div>
+
+                <!-- ── File section ─────────────────────────────────────── -->
+                <div class="n-left-section">
+                    <div class="n-left-section-label">File</div>
+                    <div class="n-left-file-info">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none"
+                             stroke="currentColor" stroke-width="2">
+                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                            <polyline points="14 2 14 8 20 8"/>
+                        </svg>
+                        <span class="n-left-filename" id="left-sidebar-filename">@(_currentFileName ?? "Untitled.docx")</span>
+                    </div>
+                </div>
+
+                <div class="n-left-divider"></div>
+
+                <!-- ── Actions ──────────────────────────────────────────── -->
+                <div class="n-left-section">
+                    <div class="n-left-section-label">Actions</div>
+
+                    <button class="n-left-action-btn" @onclick="NewDocumentFromPanel"
+                            title="New blank document">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none"
+                             stroke="currentColor" stroke-width="2">
+                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                            <polyline points="14 2 14 8 20 8"/>
+                            <line x1="12" y1="18" x2="12" y2="12"/>
+                            <line x1="9" y1="15" x2="15" y2="15"/>
+                        </svg>
+                        New Document
+                    </button>
+
+                    <button class="n-left-action-btn" @onclick="OpenFileDialog"
+                            title="Open a .docx / .doc / .rtf / .txt file">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none"
+                             stroke="currentColor" stroke-width="2">
+                            <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
+                        </svg>
+                        Open File…
+                    </button>
+
+                    <button class="n-left-action-btn" @onclick="SaveDocument"
+                            title="Save as .docx">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none"
+                             stroke="currentColor" stroke-width="2">
+                            <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
+                            <polyline points="17 21 17 13 7 13 7 21"/>
+                            <polyline points="7 3 7 8 15 8"/>
+                        </svg>
+                        Save
+                    </button>
+                </div>
+
+                <div class="n-left-divider"></div>
+
+                <!-- ── Case transforms ───────────────────────────────────── -->
+                <div class="n-left-section">
+                    @* <div class="n-left-section-label">Case Transform</div>
+                    <div class="n-left-case-hint">Select text in document first</div>
+
+                    <button class="n-left-action-btn" @onclick="ApplyTitleCase">
+                        <span class="n-left-case-icon">Tt</span>
+                        Title Case
+                    </button>
+
+                    <button class="n-left-action-btn" @onclick="ApplyInitialCaps">
+                        <span class="n-left-case-icon">Aa</span>
+                        Initial Caps
+                    </button>
+
+                    <button class="n-left-action-btn n-left-action-btn-ai" @onclick="ApplyEssentialCaps">
+                        <span class="n-ai-star-sm">✦</span>
+                        Essential Caps
+                    </button> *@
+                </div>
+
+                <div class="n-left-divider"></div>
+
+                <!-- ── Track changes ─────────────────────────────────────── -->
+                <div class="n-left-section">
+                    @* <div class="n-left-section-label">Review</div>
+
+                    <button class="n-left-action-btn" @onclick="ToggleTrackChanges">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none"
+                             stroke="currentColor" stroke-width="2">
+                            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                        </svg>
+                        Toggle Track Changes
+                    </button>
+
+                    <button class="n-left-action-btn" @onclick="AcceptAllChanges">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none"
+                             stroke="currentColor" stroke-width="2.5">
+                            <polyline points="20 6 9 17 4 12"/>
+                        </svg>
+                        Accept All Changes
+                    </button>
+
+                    <button class="n-left-action-btn n-left-action-btn-danger" @onclick="RejectAllChanges">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none"
+                             stroke="currentColor" stroke-width="2.5">
+                            <line x1="18" y1="6" x2="6" y2="18"/>
+                            <line x1="6" y1="6" x2="18" y2="18"/>
+                        </svg>
+                        Reject All Changes
+                    </button> *@
+                </div>
+
+                @if (!string.IsNullOrEmpty(_statusMessage))
+                {
+                    <div class="n-left-divider"></div>
+                    <div class="n-left-section">
+                        <span class="n-status @_statusClass">@_statusMessage</span>
+                    </div>
+                }
+
+            </aside>
+        }
+
+        <!-- Document editor -->
+        <div class="n-editor-area">
+            <div id="container1"></div>
+        </div>
+
+        <!-- AI Chat sidebar -->
+        @if (_chatOpen)
+        {
+            <aside class="n-ai-sidebar">
+
+                <div class="n-ai-header">
+                    <div class="n-ai-title">
+                        <span class="n-ai-star">✦</span> AI Assistant
+                    </div>
+                    <button class="n-ai-close" @onclick="ToggleChat" title="Close">✕</button>
+                </div>
+
+                <div class="n-ai-actions">
+                    <button class="n-ai-action-btn" @onclick='() => QuickAction("proofread")'
+                            disabled="@_chatLoading" title="Select text first">
+                        Proofread
+                    </button>
+                    <button class="n-ai-action-btn" @onclick='() => QuickAction("copyedit")'
+                            disabled="@_chatLoading" title="Select text first">
+                        Copyedit
+                    </button>
+                </div>
+
+                <div class="n-ai-messages" id="chatMessages">
+                    @if (_chatMessages.Count == 0)
+                    {
+                        <div class="n-ai-empty">
+                            <div class="n-ai-empty-icon">✦</div>
+                            <p>Select text in the document and click <strong>Proofread</strong> or
+                               <strong>Copyedit</strong>, or ask me anything.</p>
+                        </div>
+                    }
+                    @foreach (var msg in _chatMessages)
+                    {
+                        <div class="n-ai-msg n-ai-msg-@msg.Role">
+                            <div class="n-ai-msg-label">@(msg.Role == "user" ? "You" : "AI")</div>
+                            <div class="n-ai-msg-body">@((MarkupString)msg.HtmlContent)</div>
+                            @if (msg.Role == "assistant" && !string.IsNullOrEmpty(msg.ApplicableText))
+                            {
+                                if (msg.HtmlContent.Contains("Original:"))
+                                {
+                                    <button class="n-ai-apply-btn"
+                                            @onclick="() => ApplySuggestion(msg.ApplicableText!)">
+                                        ↩ Apply to document
+                                    </button>
+                                }
+                                else
+                                {
+                                    <button class="n-ai-apply-btn n-ai-preview-btn"
+                                            @onclick="() => PreviewSuggestion(msg)">
+                                        👁 Preview
+                                    </button>
+                                }
+                            }
+                        </div>
+                    }
+                    @if (_chatLoading)
+                    {
+                        <div class="n-ai-msg n-ai-msg-assistant">
+                            <div class="n-ai-msg-label">AI</div>
+                            <div class="n-ai-msg-body n-ai-typing">
+                                <span></span><span></span><span></span>
+                            </div>
+                        </div>
+                    }
+                </div>
+
+                <div class="n-ai-input-row">
+                    <textarea class="n-ai-input"
+                              placeholder="Ask about your document…"
+                              @bind="_chatInput"
+                              @bind:event="oninput"
+                              @onkeydown="HandleChatKeyDown"
+                              rows="2"
+                              disabled="@_chatLoading"></textarea>
+                    <button class="n-ai-send" @onclick="SendChatMessage"
+                            disabled="@(_chatLoading || string.IsNullOrWhiteSpace(_chatInput))">
+                        ➤
+                    </button>
+                </div>
+
+            </aside>
+        }
+
+    </div><!-- /n-main -->
+
+    <!-- ══ Sheet Tab Bar ══════════════════════════════════════════════════════ -->
+    <div class="n-sheet-bar">
+
+            <button class="n-sheet-add" @onclick="NewTab" title="Add sheet">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
+                 stroke="currentColor" stroke-width="2.5">
+                <line x1="12" y1="5" x2="12" y2="19"/>
+                <line x1="5" y1="12" x2="19" y2="12"/>
+            </svg>
+        </button>
+        <div class="n-sheet-tabs">
+            @foreach (var tab in _tabs)
+            {
+                <div class="n-sheet-tab @(tab.Id == _activeTabId ? "active" : "")"
+                     @onclick="() => SwitchTab(tab.Id)"
+                     title="@tab.FileName">
+
+                    @if (_renamingTabId == tab.Id)
+                    {
+                        <input class="n-sheet-rename-input"
+                               @bind="_renameValue"
+                               @bind:event="oninput"
+                               @onblur="CommitRename"
+                               @onkeydown="HandleRenameKey"
+                               maxlength="40"
+                               @ref="_renameInputRef" />
+                    }
+                    else
+                    {
+                        <span class="n-sheet-tab-name" @ondblclick="() => StartRename(tab)">@tab.TabLabel</span>
+                    }
+
+                    @if (_tabs.Count > 1)
+                    {
+                        <button class="n-sheet-tab-close"
+                                @onclick:stopPropagation="true"
+                                @onclick="() => CloseTab(tab.Id)"
+                                title="Close sheet">✕</button>
+                    }
+                </div>
+            }
+        </div>
+
+
+    </div><!-- /n-sheet-bar -->
+
+</div><!-- /n-workspace -->
+
+@code {
+    // ── State ────────────────────────────────────────────────────────────────
+    private string _statusMessage = string.Empty;
+    private string _statusClass   = string.Empty;
+
+    // Tab state
+    private List<DocTab> _tabs        = new();
+    private Guid         _activeTabId = Guid.Empty;
+    private DocTab?      ActiveTab    => _tabs.FirstOrDefault(t => t.Id == _activeTabId);
+    private string?      _currentFileName => ActiveTab?.FileName;
+
+    // Navigation pane state
+    private bool _navPaneOpen  = false;
+
+    // Left sidebar state
+    private bool _leftPaneOpen = false;
+
+    // Chat state
+    private bool   _chatOpen    = false;
+    private bool   _chatLoading = false;
+    private string _chatInput   = string.Empty;
+    private List<ChatMessage> _chatMessages = new();
+
+    // Theme state
+    private bool _isDarkMode = false;
+
+    // Track changes state
+    private bool _trackChangesEnabled = true; // Syncfusion initialises it ON
+
+    // Sheet rename state
+    private Guid    _renamingTabId   = Guid.Empty;
+    private string  _renameValue     = string.Empty;
+    private ElementReference _renameInputRef;
+
+    // ── Lifecycle ────────────────────────────────────────────────────────────
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await JSRuntime.InvokeVoidAsync("initializeDocumentEditor");
+            // Restore saved theme preference
+            var savedTheme = await JSRuntime.InvokeAsync<string>("getThemePreference");
+            if (savedTheme == "dark")
+            {
+                _isDarkMode = true;
+                await JSRuntime.InvokeVoidAsync("applyTheme", true);
+                StateHasChanged();
+            }
+        }
+
+        var nameToSync = _currentFileName ?? "Untitled.docx";
+        await JSRuntime.InvokeVoidAsync("console.log",
+            $"[Blazor OnAfterRender] firstRender={firstRender} | _currentFileName='{_currentFileName}' | ActiveTab='{ActiveTab?.FileName}' | sending='{nameToSync}'");
+        await JSRuntime.InvokeVoidAsync("setDocumentName", nameToSync);
+    }
+
+    // ── Theme Toggle ─────────────────────────────────────────────────────────
+    private async Task ToggleTheme()
+    {
+        _isDarkMode = !_isDarkMode;
+        await JSRuntime.InvokeVoidAsync("applyTheme", _isDarkMode);
+        StateHasChanged();
+    }
+
+    // ── Left Sidebar ─────────────────────────────────────────────────────────
+    private void ToggleLeftPane()
+    {
+        _leftPaneOpen = !_leftPaneOpen;
+        StateHasChanged();
+        JSRuntime.InvokeVoidAsync("resizeEditor");
+    }
+
+    private async Task NewDocumentFromPanel()
+    {
+        await NewTab();
+    }
+
+    private async Task OpenFileDialog()
+    {
+        await JSRuntime.InvokeVoidAsync("eval",
+            "document.getElementById('fileUploadInput').click()");
+    }
+
+    // ── File Upload ──────────────────────────────────────────────────────────
+    private async Task HandleFileUpload(InputFileChangeEventArgs e)
+    {
+        var file = e.File;
+        if (file == null) return;
+
+        var ext = Path.GetExtension(file.Name).ToLowerInvariant();
+        if (ext is not (".docx" or ".doc" or ".rtf" or ".txt"))
+        {
+            SetStatus("❌ Unsupported file type.", isError: true);
+            return;
+        }
+
+        SetStatus("⏳ Opening document…", isError: false);
+        try
+        {
+            using var formContent = new MultipartFormDataContent();
+            var stream = file.OpenReadStream(maxAllowedSize: 104_857_600);
+            formContent.Add(new StreamContent(stream), "files", file.Name);
+
+            var response = await Http.PostAsync("api/documenteditor/import", formContent);
+            if (!response.IsSuccessStatusCode)
+            {
+                SetStatus($"❌ {await response.Content.ReadAsStringAsync()}", isError: true);
+                return;
+            }
+
+            var sfdt = await response.Content.ReadAsStringAsync();
+            var fileName = Path.GetFileNameWithoutExtension(file.Name) + ".docx";
+
+            var activeTab = ActiveTab;
+            DocTab targetTab;
+            if (activeTab != null && activeTab.IsEmpty)
+            {
+                targetTab = activeTab;
+            }
+            else
+            {
+                targetTab = new DocTab { FileName = "loading", IsEmpty = false };
+                _tabs.Add(targetTab);
+                _activeTabId = targetTab.Id;
+            }
+
+            targetTab.FileName   = fileName;
+            targetTab.Sfdt       = sfdt;
+            targetTab.IsModified = false;
+            targetTab.IsEmpty    = false;
+
+            await JSRuntime.InvokeVoidAsync("console.log",
+                $"[Blazor HandleFileUpload] fileName='{fileName}' | targetTab.FileName='{targetTab.FileName}' | ActiveTab?.FileName='{ActiveTab?.FileName}' | _currentFileName='{_currentFileName}'");
+
+            await JSRuntime.InvokeVoidAsync("loadDocument", sfdt);
+            SetStatus($"✅ Opened: {file.Name}", isError: false);
+            StateHasChanged();
+        }
+        catch (Exception ex) { SetStatus($"❌ {ex.Message}", isError: true); }
+    }
+
+    // ── Save ─────────────────────────────────────────────────────────────────
+    private async Task SaveDocument()
+    {
+        if (ActiveTab == null || ActiveTab.IsEmpty)
+        {
+            SetStatus("❌ No document to save.", isError: true);
+            return;
+        }
+        SetStatus("⏳ Saving…", isError: false);
+        try
+        {
+            var sfdt = await JSRuntime.InvokeAsync<string>("getDocumentContent");
+            if (string.IsNullOrEmpty(sfdt)) { SetStatus("❌ Nothing to save.", isError: true); return; }
+
+            ActiveTab.Sfdt       = sfdt;
+            ActiveTab.IsModified = false;
+
+            var response = await Http.PostAsJsonAsync("api/documenteditor/save",
+                new { Content = sfdt, FileName = ActiveTab.FileName });
+            if (!response.IsSuccessStatusCode) { SetStatus("❌ Save failed.", isError: true); return; }
+
+            var base64 = Convert.ToBase64String(await response.Content.ReadAsByteArrayAsync());
+            await JSRuntime.InvokeVoidAsync("downloadFile", base64, ActiveTab.FileName);
+            SetStatus($"✅ Saved: {ActiveTab.FileName}", isError: false);
+            StateHasChanged();
+        }
+        catch (Exception ex) { SetStatus($"❌ {ex.Message}", isError: true); }
+    }
+
+    // ══════════════════════════════════════════════════════════════════════════
+    // CASE TRANSFORMATIONS
+    // ══════════════════════════════════════════════════════════════════════════
+
+    private async Task ApplyTitleCase()
+    {
+        var result = await JSRuntime.InvokeAsync<string>("applyTitleCase");
+        SetStatus(result == "NO_SELECTION" ? "⚠️ Select text first." : "✅ Title Case applied.",
+                  result == "NO_SELECTION");
+    }
+
+    private async Task ApplyInitialCaps()
+    {
+        var result = await JSRuntime.InvokeAsync<string>("applyInitialCaps");
+        SetStatus(result == "NO_SELECTION" ? "⚠️ Select text first." : "✅ Initial Caps applied.",
+                  result == "NO_SELECTION");
+    }
+
+    private async Task ApplyEssentialCaps()
+    {
+        var result = await JSRuntime.InvokeAsync<string>("applyEssentialCaps");
+        if      (result == "NO_SELECTION")   SetStatus("⚠️ Select text first.", true);
+        else if (result == "NLP_NOT_LOADED") SetStatus("❌ NLP not loaded yet — retry.", true);
+        else                                 SetStatus("✅ Essential Caps applied.", false);
+    }
+
+    // ══════════════════════════════════════════════════════════════════════════
+    // AI CHAT
+    // ══════════════════════════════════════════════════════════════════════════
+
+    private void ToggleChat()
+    {
+        _chatOpen = !_chatOpen;
+        StateHasChanged();
+        JSRuntime.InvokeVoidAsync("resizeEditor");
+    }
+
+    private async Task QuickAction(string action)
+    {
+        var selected = await JSRuntime.InvokeAsync<string>("getSelectedText");
+        bool isWholeDoc = false;
+
+        if (string.IsNullOrWhiteSpace(selected))
+        {
+            selected = await JSRuntime.InvokeAsync<string>("getDocumentText");
+            isWholeDoc = true;
+        }
+
+        if (string.IsNullOrWhiteSpace(selected))
+        {
+            AddMessage("assistant", "⚠️ The document appears to be empty.", null);
+            return;
+        }
+
+        var trimmed   = TrimToWordLimit(selected, 3000);
+        bool wasTrimmed = trimmed.Length < selected.Length;
+
+        var scope = isWholeDoc ? "whole document" : "selection";
+        var label  = isWholeDoc ? "📄 Whole document" : $"<em>{Truncate(selected, 80)}</em>";
+
+        if (wasTrimmed)
+            AddMessage("assistant",
+                $"⚠️ Document is large — analyzing first ~3,000 words to stay within free token limits.",
+                null);
+
+        var prompt = action == "proofread"
+            ? $"Proofread the following {scope}. List each issue with a short explanation and corrected version. If no issues, say so.\n\nText:\n{trimmed}"
+            : $"Copyedit the following {scope} to improve clarity, flow, and word choice while preserving meaning. Show the improved version (labeled 'Improved version:') then briefly explain your changes.\n\nText:\n{trimmed}";
+
+        AddMessage("user", action == "proofread"
+            ? $"🔍 Proofread: {label}"
+            : $"✏️ Copyedit: {label}", null);
+
+        await CallAI(prompt, extractApplicable: action == "copyedit");
+    }
+
+    private async Task SendChatMessage()
+    {
+        if (string.IsNullOrWhiteSpace(_chatInput) || _chatLoading) return;
+
+        var userText = _chatInput.Trim();
+        _chatInput = string.Empty;
+        AddMessage("user", System.Web.HttpUtility.HtmlEncode(userText), null);
+
+        if (IsSimpleCheck(userText))
+        {
+            await RunFreeCheck(userText);
+        }
+        else
+        {
+            var selected = await JSRuntime.InvokeAsync<string>("getSelectedText");
+            var prompt = string.IsNullOrWhiteSpace(selected)
+                ? userText
+                : $"{userText}\n\nSelected text for context:\n{selected}";
+            await CallAI(prompt, extractApplicable: false);
+        }
+    }
+
+    private async Task HandleChatKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter" && !e.ShiftKey)
+            await SendChatMessage();
+    }
+
+    private static bool IsSimpleCheck(string input)
+    {
+        var lower = input.ToLower();
+        return lower.Contains("word count") || lower.Contains("how many words") ||
+               lower.Contains("sentence count") || lower.Contains("how long") ||
+               lower.Contains("character count");
+    }
+
+    private async Task RunFreeCheck(string query)
+    {
+        var text  = await JSRuntime.InvokeAsync<string>("getDocumentText");
+        var lower = query.ToLower();
+        string reply;
+
+        if (lower.Contains("word"))
+        {
+            var words = string.IsNullOrWhiteSpace(text) ? 0
+                : text.Split(new[] { ' ', '\n', '\r', '\t' },
+                             StringSplitOptions.RemoveEmptyEntries).Length;
+            reply = $"📊 Word count: <strong>{words:N0}</strong> words";
+        }
+        else if (lower.Contains("sentence"))
+        {
+            var sentences = string.IsNullOrWhiteSpace(text) ? 0
+                : text.Split(new[] { '.', '!', '?' },
+                             StringSplitOptions.RemoveEmptyEntries).Length;
+            reply = $"📊 Sentence count: <strong>{sentences:N0}</strong> sentences";
+        }
+        else if (lower.Contains("character"))
+        {
+            reply = $"📊 Character count: <strong>{text?.Length ?? 0:N0}</strong> characters";
+        }
+        else
+        {
+            reply = "I can answer word count, sentence count, and character count for free. For proofreading and copyediting questions, I'll use the AI engine.";
+        }
+
+        AddMessage("assistant", reply, null);
+    }
+
+    private async Task CallAI(string prompt, bool extractApplicable)
+    {
+        _chatLoading = true;
+        StateHasChanged();
+        await ScrollChatToBottom();
+
+        try
+        {
+            var response = await Http.PostAsJsonAsync("api/ai/chat",
+                new { Prompt = prompt });
+
+            if (!response.IsSuccessStatusCode)
+            {
+                AddMessage("assistant", $"❌ AI error: {await response.Content.ReadAsStringAsync()}", null);
+                return;
+            }
+
+            var aiText = await response.Content.ReadAsStringAsync();
+            aiText = aiText.Trim('"').Replace("\\n", "\n").Replace("\\r", "");
+
+            var htmlContent = FormatAsHtml(aiText);
+            string? applicable = extractApplicable ? ExtractImprovedText(aiText) : null;
+
+            AddMessage("assistant", htmlContent, applicable);
+        }
+        catch (Exception ex)
+        {
+            AddMessage("assistant", $"❌ {ex.Message}", null);
+        }
+        finally
+        {
+            _chatLoading = false;
+            StateHasChanged();
+            await ScrollChatToBottom();
+        }
+    }
+
+    private async Task ApplySuggestion(string text)
+    {
+        await JSRuntime.InvokeVoidAsync("replaceSelectedText", text);
+        SetStatus("AI suggestion applied as tracked change.", false);
+        AddMessage("assistant", "✅ Applied to document.", null);
+    }
+
+    // ════════════════════════════════════════════════════════════════════════
+    // NAVIGATION PANE
+    // ════════════════════════════════════════════════════════════════════════
+
+    private async Task ToggleNavigationPane()
+    {
+        _navPaneOpen = !_navPaneOpen;
+        await JSRuntime.InvokeVoidAsync("toggleNavigationPane", _navPaneOpen);
+        StateHasChanged();
+    }
+
+    // ── Helpers ───────────────────────────────────────────────────────────────
+    private void AddMessage(string role, string htmlContent, string? applicableText)
+    {
+        _chatMessages.Add(new ChatMessage(role, htmlContent, applicableText));
+        StateHasChanged();
+    }
+
+    private async Task ScrollChatToBottom()
+    {
+        await Task.Delay(80);
+        try
+        {
+            await JSRuntime.InvokeVoidAsync("eval",
+                "var el=document.getElementById('chatMessages'); if(el) el.scrollTop=el.scrollHeight;");
+        }
+        catch { }
+    }
+
+    private static string Truncate(string s, int max) =>
+        s.Length <= max ? s : s[..max] + "…";
+
+    private static string TrimToWordLimit(string text, int maxWords)
+    {
+        var words = text.Split(' ');
+        if (words.Length <= maxWords) return text;
+        return string.Join(' ', words[..maxWords]);
+    }
+
+    private static string FormatAsHtml(string text)
+    {
+        var html = System.Web.HttpUtility.HtmlEncode(text);
+        html = System.Text.RegularExpressions.Regex.Replace(html, @"\*\*(.+?)\*\*", "<strong>$1</strong>");
+        html = System.Text.RegularExpressions.Regex.Replace(html, @"\*(.+?)\*", "<em>$1</em>");
+        html = html.Replace("\n", "<br/>");
+        return html;
+    }
+
+    private static string? ExtractImprovedText(string aiResponse)
+    {
+        var patterns = new[] { "improved version:", "revised version:", "copyedited version:", "here is the" };
+        foreach (var pattern in patterns)
+        {
+            var idx = aiResponse.ToLower().IndexOf(pattern);
+            if (idx >= 0)
+            {
+                var after = aiResponse[(idx + pattern.Length)..].Trim().TrimStart('\n', '\r', ':').Trim();
+                var end   = after.IndexOf('\n');
+                return end > 0 ? after[..end].Trim() : after.Trim();
+            }
+        }
+        return null;
+    }
+
+    private void SetStatus(string message, bool isError)
+    {
+        _statusMessage = message;
+        _statusClass   = isError ? "n-status-error" : "n-status-ok";
+        StateHasChanged();
+    }
+
+    private record ChatMessage(string Role, string HtmlContent, string? ApplicableText);
+
+    // ════════════════════════════════════════════════════════════════════════
+    // TAB MANAGEMENT
+    // ════════════════════════════════════════════════════════════════════════
+
+    protected override Task OnInitializedAsync()
+    {
+        var tab = new DocTab { FileName = "Untitled.docx", IsEmpty = true };
+        _tabs.Add(tab);
+        _activeTabId = tab.Id;
+        return Task.CompletedTask;
+    }
+
+    private async Task NewTab()
+    {
+        var current = ActiveTab;
+        if (current != null)
+        {
+            var oldSfdt = await JSRuntime.InvokeAsync<string>("getDocumentContent");
+            if (!string.IsNullOrEmpty(oldSfdt))
+            {
+                current.Sfdt       = oldSfdt;
+                current.IsEmpty    = false;
+                current.IsModified = true;
+            }
+        }
+
+        var tab = new DocTab { FileName = "Untitled.docx", IsEmpty = true };
+        _tabs.Add(tab);
+        _activeTabId = tab.Id;
+        await JSRuntime.InvokeVoidAsync("loadBlankDocument");
+        StateHasChanged();
+    }
+
+    // ── Sheet rename ──────────────────────────────────────────────────────────
+    private async Task StartRename(DocTab tab)
+    {
+        _renamingTabId = tab.Id;
+        _renameValue   = tab.TabLabel; // pre-fill with name without extension
+        StateHasChanged();
+        await Task.Delay(50);
+        try { await _renameInputRef.FocusAsync(); } catch { }
+    }
+
+    private void CommitRename()
+    {
+        var tab = _tabs.FirstOrDefault(t => t.Id == _renamingTabId);
+        if (tab != null && !string.IsNullOrWhiteSpace(_renameValue))
+        {
+            var ext = System.IO.Path.GetExtension(tab.FileName);
+            tab.FileName = _renameValue.Trim() + (string.IsNullOrEmpty(ext) ? ".docx" : ext);
+        }
+        _renamingTabId = Guid.Empty;
+        StateHasChanged();
+    }
+
+    private void HandleRenameKey(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter")  CommitRename();
+        if (e.Key == "Escape") { _renamingTabId = Guid.Empty; StateHasChanged(); }
+    }
+
+    private async Task SwitchTab(Guid tabId)
+    {
+        if (tabId == _activeTabId) return;
+
+        var currentTab = ActiveTab;
+        var nextTab    = _tabs.FirstOrDefault(t => t.Id == tabId);
+        if (nextTab == null) return;
+
+        bool nextIsBlank = string.IsNullOrEmpty(nextTab.Sfdt);
+        var oldSfdt = await JSRuntime.InvokeAsync<string>(
+            "saveAndSwitch",
+            nextIsBlank ? null : nextTab.Sfdt,
+            nextIsBlank);
+
+        if (currentTab != null && !string.IsNullOrEmpty(oldSfdt))
+        {
+            currentTab.Sfdt    = oldSfdt;
+            currentTab.IsEmpty = false;
+        }
+
+        _activeTabId = tabId;
+        StateHasChanged();
+    }
+
+    private async Task CloseTab(Guid tabId)
+    {
+        var tab = _tabs.FirstOrDefault(t => t.Id == tabId);
+        if (tab == null) return;
+
+        if (_tabs.Count == 1)
+        {
+            tab.FileName   = "Untitled.docx";
+            tab.Sfdt       = string.Empty;
+            tab.IsModified = false;
+            tab.IsEmpty    = true;
+            await JSRuntime.InvokeVoidAsync("loadBlankDocument");
+            StateHasChanged();
+            return;
+        }
+
+        var idx = _tabs.IndexOf(tab);
+        _tabs.Remove(tab);
+
+        var nextTab = _tabs[Math.Min(idx, _tabs.Count - 1)];
+        _activeTabId = nextTab.Id;
+
+        if (nextTab.IsEmpty)
+            await JSRuntime.InvokeVoidAsync("loadBlankDocument");
+        else
+            await JSRuntime.InvokeVoidAsync("loadDocument", nextTab.Sfdt);
+
+        StateHasChanged();
+    }
+
+    private async Task SaveCurrentTabSfdt()
+    {
+        var current = ActiveTab;
+        if (current == null || current.IsEmpty) return;
+        var sfdt = await JSRuntime.InvokeAsync<string>("getDocumentContent");
+        if (!string.IsNullOrEmpty(sfdt))
+        {
+            current.Sfdt       = sfdt;
+            current.IsModified = true;
+        }
+    }
+
+    private class DocTab
+    {
+        public Guid   Id          { get; } = Guid.NewGuid();
+        public string FileName    { get; set; } = "Untitled.docx";
+        public string Sfdt        { get; set; } = string.Empty;
+        public bool   IsModified  { get; set; } = false;
+        public bool   IsEmpty     { get; set; } = false;
+        // Sheet tab label: file name without extension
+        public string TabLabel    => string.IsNullOrEmpty(FileName)
+            ? "Untitled"
+            : System.IO.Path.GetFileNameWithoutExtension(FileName);
+        public string DisplayName => FileName.Length > 18
+            ? FileName[..15] + "…"
+            : FileName;
+    }
+
+    // ════════════════════════════════════════════════════════════════════════
+    // TRACK CHANGES
+    // ════════════════════════════════════════════════════════════════════════
+
+    private async Task ToggleTrackChanges()
+    {
+        var enabled = await JSRuntime.InvokeAsync<bool>("toggleTrackChanges");
+        _trackChangesEnabled = enabled;
+        SetStatus(enabled ? "✍ Track Changes ON" : "✍ Track Changes OFF", false);
+    }
+
+    private async Task AcceptAllChanges()
+    {
+        await JSRuntime.InvokeVoidAsync("acceptAllChanges");
+        SetStatus("✔ All changes accepted.", false);
+    }
+
+    private async Task RejectAllChanges()
+    {
+        await JSRuntime.InvokeVoidAsync("rejectAllChanges");
+        SetStatus("✖ All changes rejected.", false);
+    }
+
+    private async Task PreviewSuggestion(ChatMessage msg)
+    {
+        var original = await JSRuntime.InvokeAsync<string>("getSelectedText");
+
+        if (string.IsNullOrWhiteSpace(original))
+        {
+            SetStatus("⚠️ Select text to preview changes.", true);
+            return;
+        }
+
+        var previewHtml = $@"
+            <div style='margin-bottom:8px;'>
+                <strong>Original:</strong><br/>
+                <span style='color:#D44C47'>{System.Web.HttpUtility.HtmlEncode(original)}</span>
+            </div>
+            <div style='margin-bottom:8px;'>
+                <strong>AI Suggestion:</strong><br/>
+                <span style='color:#0F7B6C'>{System.Web.HttpUtility.HtmlEncode(msg.ApplicableText!)}</span>
+            </div>
+            <div style='font-size:0.73rem;color:#787774;'>
+                Click <strong>Apply</strong> below to insert as tracked change.
+            </div>
+        ";
+
+        AddMessage("assistant", previewHtml, msg.ApplicableText);
+        await ScrollChatToBottom();
+    }
+}

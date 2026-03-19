@@ -1,0 +1,77 @@
+/* ══════════════════════════════════════════════════════════════════════════
+   RIBBON TABS — Warm gray chrome (light) + Layered dark mode
+══════════════════════════════════════════════════════════════════════════ */
+
+/* ── LIGHT MODE ─────────────────────────────────────── */
+.e-de-ctn { background: #F4F3F0 !important; }
+.e-de-ctnr-ribbon { background: #F4F3F0 !important; }
+
+.e-de-ctnr-ribbon .e-ribbon .e-tab-header,
+.e-de-ctnr-ribbon .e-ribbon .e-tab-header .e-toolbar-items,
+.e-de-ribbon .e-tab-header,
+.e-de-ribbon .e-tab-header .e-toolbar-items {
+    background: #F4F3F0 !important;
+}
+
+.e-ribbon-tab-item,
+.e-ribbon-group,
+.e-ribbon-group-container,
+.e-ribbon-group-content,
+.e-ribbon-collection,
+.e-content > .e-item {
+    background: #F4F3F0 !important;
+}
+
+.e-de-ctnr-ribbon .e-ribbon,
+.e-de-ribbon {
+    border-bottom: 1px solid #D6D4CF !important;
+}
+
+/* ── DARK MODE: Two-layer ribbon ────────────────────────
+   Tab-name strip (Home, Insert…) = #252320  darker
+   Ribbon content (buttons area)  = #2B2927  lighter
+   This creates visible depth between the two zones.
+─────────────────────────────────────────────────────── */
+
+/* Outer container + properties pane */
+[data-theme="dark"] .e-de-ctn,
+[data-theme="dark"] .e-de-ctnr-ribbon,
+[data-theme="dark"] .e-de-ribbon-classic-ctnr-properties-pane {
+    background: #2B2927 !important;
+}
+
+/* Tab name strip (Home, Insert, Layout…) — darker */
+[data-theme="dark"] .e-de-ctnr-ribbon .e-ribbon .e-tab-header,
+[data-theme="dark"] .e-de-ctnr-ribbon .e-ribbon .e-tab-header .e-toolbar-items,
+[data-theme="dark"] .e-de-ribbon .e-tab-header,
+[data-theme="dark"] .e-de-ribbon .e-tab-header .e-toolbar-items,
+[data-theme="dark"] .e-tab-header,
+[data-theme="dark"] .e-toolbar-items,
+[data-theme="dark"] .e-toolbar {
+    background: #252320 !important;
+    border-color: #4A4744 !important;
+}
+
+/* Ribbon content panels (buttons, icons, groups) — lighter */
+[data-theme="dark"] .e-ribbon-tab-item,
+[data-theme="dark"] .e-ribbon-group,
+[data-theme="dark"] .e-ribbon-group-container,
+[data-theme="dark"] .e-ribbon-group-content,
+[data-theme="dark"] .e-ribbon-collection,
+[data-theme="dark"] .e-content > .e-item,
+[data-theme="dark"] .e-content,
+[data-theme="dark"] .e-tab > .e-content,
+[data-theme="dark"] .e-tab > .e-content > .e-item,
+[data-theme="dark"] .e-ribbon .e-content,
+[data-theme="dark"] .e-ribbon .e-content .e-item,
+[data-theme="dark"] [id*="document-editor-ribbon"] .e-content,
+[data-theme="dark"] [id*="document-editor-ribbon"] .e-content .e-item {
+    background: #43403d !important;
+    color: #eeedeb !important;
+}
+
+/* Bottom border of ribbon */
+[data-theme="dark"] .e-de-ctnr-ribbon .e-ribbon,
+[data-theme="dark"] .e-de-ribbon {
+    border-bottom: 1px solid #4A4744 !important;
+}

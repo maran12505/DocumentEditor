@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Syncfusion Word Editor server package -->
+    <PackageReference Include="Syncfusion.EJ2.WordEditor.AspNet.Core" Version="27.2.2" />
+    <!-- Required for UseBlazorFrameworkFiles + UseWebAssemblyDebugging -->
+    <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.Server" Version="10.0.1" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Reference the client project so server can serve the WASM app -->
+    <ProjectReference Include="..\Deditor.Client\Deditor.Client.csproj" />
+  </ItemGroup>
+
+</Project>
