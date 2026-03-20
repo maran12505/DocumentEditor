@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("Deditor.Server")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+73db212a9b1d95e2baeee5cdda102ab50aea7441")]
 [assembly: System.Reflection.AssemblyProductAttribute("Deditor.Server")]
 [assembly: System.Reflection.AssemblyTitleAttribute("Deditor.Server")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
