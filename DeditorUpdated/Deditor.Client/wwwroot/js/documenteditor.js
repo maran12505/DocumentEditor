@@ -44,7 +44,33 @@ window.initializeDocumentEditor = function () {
         clearTimeout(_winResizeTimer);
         _winResizeTimer = setTimeout(function () { safeResize(5); }, 80);
     });
+    _interceptFileMenu();
 };
+
+// ── Intercept Syncfusion ribbon File > New / Open ────────────────────────────
+function _interceptFileMenu() {
+    document.addEventListener('click', function (e) {
+        var menuItem = e.target.closest('.e-menu-item');
+        if (!menuItem || !window._blazorEditorRef) return;
+        var text = (menuItem.textContent || '').trim();
+        if (text !== 'New' && text !== 'Open') return;
+ 
+        e.preventDefault();
+        e.stopImmediatePropagation();
+ 
+        // Close the file menu popup
+        try {
+            var fileBtn = document.querySelector('.e-ribbon-file-menu');
+            if (fileBtn) fileBtn.click();
+        } catch (ex) {}
+ 
+        if (text === 'New') {
+            window._blazorEditorRef.invokeMethodAsync('NewTabFromJS');
+        } else {
+            window._blazorEditorRef.invokeMethodAsync('OpenFileFromJS');
+        }
+    }, true); // capture phase — fires before Syncfusion's handler
+}
 
 // ══════════════════════════════════════════════════════════════════════════════
 // THEME
@@ -458,6 +484,7 @@ window.insertSnippetText = function (body) {
 //   • "/" key → Blazor.OnSlashTyped     (open slash snippet picker)
 // ══════════════════════════════════════════════════════════════════════════════
 window.registerEditorKeyListeners = function (dotNetRef) {
+      window._blazorEditorRef = dotNetRef;
     // Escape — capture phase so it fires before Syncfusion
     document.addEventListener('keydown', function (e) {
         if (e.key === 'Escape') {

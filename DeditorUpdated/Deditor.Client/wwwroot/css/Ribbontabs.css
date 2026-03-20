@@ -27,20 +27,78 @@
     border-bottom: 1px solid #D6D4CF !important;
 }
 
-/* ── DARK MODE: Two-layer ribbon ────────────────────────
-   Tab-name strip (Home, Insert…) = #252320  darker
-   Ribbon content (buttons area)  = #2B2927  lighter
-   This creates visible depth between the two zones.
-─────────────────────────────────────────────────────── */
+/* ══════════════════════════════════════════════════════
+   CENTER TABS + HIDE BROKEN INDICATOR
+══════════════════════════════════════════════════════ */
+.e-ribbon-tab > .e-tab-header > .e-toolbar-items,
+.e-de-ctnr-ribbon .e-ribbon .e-tab-header > .e-toolbar-items,
+.e-de-ribbon .e-tab-header > .e-toolbar-items,
+.e-ribbon .e-tab-header > .e-toolbar-items {
+    display: flex !important;
+    justify-content: center !important;
+    align-items: center !important;
+    width: 100% !important;
+}
 
-/* Outer container + properties pane */
+.e-ribbon-tab > .e-tab-header .e-toolbar-item,
+.e-de-ctnr-ribbon .e-ribbon .e-tab-header .e-toolbar-item,
+.e-de-ribbon .e-tab-header .e-toolbar-item,
+.e-ribbon .e-tab-header .e-toolbar-item {
+    float: none !important;
+}
+
+.e-tab-header .e-toolbar-item.e-ribbon-contextual-tab.e-hidden {
+    display: none !important;
+}
+
+.e-tab-header .e-indicator,
+.e-ribbon .e-tab-header .e-indicator,
+.e-ribbon-tab .e-indicator {
+    display: none !important;
+}
+
+/* ══════════════════════════════════════════════════════
+   PILL STYLE — visual only, no layout changes
+══════════════════════════════════════════════════════ */
+
+/* Active tab — white pill */
+.e-tab-header .e-toolbar-item.e-active .e-tab-wrap {
+    background: #FFFFFF !important;
+    border-radius: 4px !important;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.06) !important;
+}
+
+.e-tab-header .e-toolbar-item.e-active .e-tab-text,
+.e-tab-header .e-toolbar-item.e-active .e-tab-text span {
+    color: #2C2B27 !important;
+    font-weight: 600 !important;
+}
+
+/* Inactive tabs — muted */
+.e-tab-header .e-toolbar-item:not(.e-active) .e-tab-text,
+.e-tab-header .e-toolbar-item:not(.e-active) .e-tab-text span {
+    color: #8A877F !important;
+    font-weight: 450 !important;
+}
+
+/* Hover — subtle bg */
+.e-tab-header .e-toolbar-item:not(.e-active) .e-tab-wrap:hover {
+    background: #E8E5E0 !important;
+    border-radius: 6px !important;
+}
+
+/* ══════════════════════════════════════════════════════
+   DARK MODE
+══════════════════════════════════════════════════════ */
+
+/* Outer container */
 [data-theme="dark"] .e-de-ctn,
 [data-theme="dark"] .e-de-ctnr-ribbon,
 [data-theme="dark"] .e-de-ribbon-classic-ctnr-properties-pane {
     background: #2B2927 !important;
 }
 
-/* Tab name strip (Home, Insert, Layout…) — darker */
+/* Tab strip — darker */
 [data-theme="dark"] .e-de-ctnr-ribbon .e-ribbon .e-tab-header,
 [data-theme="dark"] .e-de-ctnr-ribbon .e-ribbon .e-tab-header .e-toolbar-items,
 [data-theme="dark"] .e-de-ribbon .e-tab-header,
@@ -52,7 +110,30 @@
     border-color: #4A4744 !important;
 }
 
-/* Ribbon content panels (buttons, icons, groups) — lighter */
+/* Dark — active pill */
+[data-theme="dark"] .e-tab-header .e-toolbar-item.e-active .e-tab-wrap {
+    background: #3A3733 !important;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.2) !important;
+}
+
+[data-theme="dark"] .e-tab-header .e-toolbar-item.e-active .e-tab-text,
+[data-theme="dark"] .e-tab-header .e-toolbar-item.e-active .e-tab-text span {
+    color: #E8E6E1 !important;
+    font-weight: 600 !important;
+}
+
+/* Dark — inactive */
+[data-theme="dark"] .e-tab-header .e-toolbar-item:not(.e-active) .e-tab-text,
+[data-theme="dark"] .e-tab-header .e-toolbar-item:not(.e-active) .e-tab-text span {
+    color: #7D7870 !important;
+}
+
+/* Dark — hover */
+[data-theme="dark"] .e-tab-header .e-toolbar-item:not(.e-active) .e-tab-wrap:hover {
+    background: #33312E !important;
+}
+
+/* Ribbon content panels — lighter */
 [data-theme="dark"] .e-ribbon-tab-item,
 [data-theme="dark"] .e-ribbon-group,
 [data-theme="dark"] .e-ribbon-group-container,
@@ -70,7 +151,6 @@
     color: #eeedeb !important;
 }
 
-/* Bottom border of ribbon */
 [data-theme="dark"] .e-de-ctnr-ribbon .e-ribbon,
 [data-theme="dark"] .e-de-ribbon {
     border-bottom: 1px solid #4A4744 !important;

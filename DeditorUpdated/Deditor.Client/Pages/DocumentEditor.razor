@@ -1,4 +1,4 @@
-@page "/documenteditor"
+@page "/"
 @using Microsoft.JSInterop
 @using Microsoft.AspNetCore.Components.Forms
 @using System.Text.Json
@@ -129,7 +129,7 @@
         <InputFile id="fileUploadInput" OnChange="HandleFileUpload" accept=".docx,.doc,.rtf,.txt" style="display:none" />
     </div>
 
-    <div class="n-toolbar-center">
+    @* <div class="n-toolbar-center">
         @if (!string.IsNullOrEmpty(_autoSaveLabel))
         {
             <span class="n-autosave-chip @(_autoSaveLabel.StartsWith("✓") ? "saved" : "")">
@@ -144,7 +144,7 @@
                 @_autoSaveLabel
             </span>
         }
-    </div>
+    </div> *@
 
     <div class="n-topbar-right">
         <button class="n-btn n-btn-ghost n-btn-icon @(_navPaneOpen ? "active" : "")"
@@ -655,6 +655,11 @@
         StateHasChanged();
         return Task.CompletedTask;
     }
+    [JSInvokable]
+    public async Task NewTabFromJS() => await NewTab();
+ 
+    [JSInvokable]
+    public async Task OpenFileFromJS() => await OpenFileDialog();
 
     // ════════════════════════════════════════════════════════════════════════
     // FOCUS MODE
@@ -825,6 +830,7 @@
         _leftPaneOpen = !_leftPaneOpen; StateHasChanged();
         JSRuntime.InvokeVoidAsync("resizeEditor");
     }
+    
 
     private async Task NewDocumentFromPanel() => await NewTab();
 
