@@ -1,5 +1,11 @@
 using Microsoft.AspNetCore.ResponseCompression;
 
+// ═══════════════════════════════════════════════════════════════════════════════
+// Register Syncfusion license — MUST be the very first line, before anything else
+// This removes the "Created with a trial version" watermark from saved documents
+// ═══════════════════════════════════════════════════════════════════════════════
+Syncfusion.Licensing.SyncfusionLicenseProvider.RegisterLicense("ORg4AjUWIQA/Gnt3VVhhQlJDfV5AQmBIYVp/TGpJfl96cVxMZVVBJAtUQF1hTH5bdE1jUH9ddX1VQWhbWkdy");
+
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddControllersWithViews();

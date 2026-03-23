@@ -159,8 +159,30 @@ html, body {
     background: transparent;
 }
 
+.n-btn1 {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 2px 2px;
+    border: none;
+    border-radius: var(--radius-sm);
+    font-size: .8rem;
+    font-weight: 500;
+    font-family: inherit;
+    cursor: pointer;
+    transition: background .12s, color .12s;
+    white-space: nowrap;
+    line-height: 1.4;
+    color: var(--n-text-2);
+    background: transparent;
+}
+
+
 .n-btn:hover { background: var(--n-hover); color: var(--n-text); }
 .n-btn:active { background: var(--n-active); }
+
+.n-btn1:hover { background: var(--n-hover); color: var(--n-text); }
+.n-btn1:active { background: var(--n-active); }
 
 .n-btn svg { flex-shrink: 0; }
 .n-btn-ghost { /* default ghost */ }

@@ -45,6 +45,7 @@ window.initializeDocumentEditor = function () {
         _winResizeTimer = setTimeout(function () { safeResize(5); }, 80);
     });
     _interceptFileMenu();
+    _disableSyncfusionSave();
 };
 
 // ── Intercept Syncfusion ribbon File > New / Open ────────────────────────────
@@ -54,23 +55,258 @@ function _interceptFileMenu() {
         if (!menuItem || !window._blazorEditorRef) return;
         var text = (menuItem.textContent || '').trim();
         if (text !== 'New' && text !== 'Open') return;
- 
+
         e.preventDefault();
         e.stopImmediatePropagation();
- 
-        // Close the file menu popup
+
         try {
             var fileBtn = document.querySelector('.e-ribbon-file-menu');
             if (fileBtn) fileBtn.click();
         } catch (ex) {}
- 
+
         if (text === 'New') {
             window._blazorEditorRef.invokeMethodAsync('NewTabFromJS');
         } else {
             window._blazorEditorRef.invokeMethodAsync('OpenFileFromJS');
         }
-    }, true); // capture phase — fires before Syncfusion's handler
+    }, true);
 }
+
+// ── Disable Syncfusion built-in Ctrl+S ───────────────────────────────────────
+function _disableSyncfusionSave() {
+    if (!window._deContainer) return;
+    var de = window._deContainer.documentEditor;
+    de.keyDown = function (args) {
+        if (!args || !args.event) return;
+        var e = args.event;
+        if ((e.ctrlKey || e.metaKey) && (e.key === 's' || e.key === 'S')) {
+            args.isHandled = true;
+        }
+    };
+}
+
+
+
+// ══════════════════════════════════════════════════════════════════════════════
+// FILE SYSTEM ACCESS API — Notepad-style Save / Save As
+// ══════════════════════════════════════════════════════════════════════════════
+// Stores FileSystemFileHandle per tab so "Save" can overwrite without a picker.
+// Falls back to download-based save if the API is not supported.
+// ══════════════════════════════════════════════════════════════════════════════
+
+var _fileHandles = {};  // tabId → FileSystemFileHandle
+
+// Check if File System Access API is available
+window.hasFileSystemAccess = function () {
+    return typeof window.showSaveFilePicker === 'function';
+};
+
+// Check if a tab already has a saved file handle
+window.hasFileHandle = function (tabId) {
+    return !!_fileHandles[tabId];
+};
+
+// Clear file handle for a tab (used when closing tab or creating new)
+window.clearFileHandle = function (tabId) {
+    delete _fileHandles[tabId];
+};
+
+// ── Check if saved file still exists on disk ─────────────────────────────────
+// Returns: "EXISTS", "DELETED", "NO_HANDLE", or "ERROR:msg"
+window.checkFileExists = async function (tabId) {
+    if (!_fileHandles[tabId]) return 'NO_HANDLE';
+    try {
+        var handle = _fileHandles[tabId];
+        // queryPermission first — if denied, treat as no handle
+        var perm = await handle.queryPermission({ mode: 'readwrite' });
+        if (perm !== 'granted') {
+            perm = await handle.requestPermission({ mode: 'readwrite' });
+            if (perm !== 'granted') return 'NO_HANDLE';
+        }
+        // getFile() throws NotFoundError if the file was deleted from disk
+        await handle.getFile();
+        return 'EXISTS';
+    } catch (e) {
+        if (e.name === 'NotFoundError') return 'DELETED';
+        if (e.name === 'NotAllowedError' || e.name === 'SecurityError') {
+            delete _fileHandles[tabId];
+            return 'NO_HANDLE';
+        }
+        return 'ERROR:' + e.message;
+    }
+};
+
+// ── Get the full file name stored in the handle ──────────────────────────────
+window.getFileHandleName = function (tabId) {
+    if (!_fileHandles[tabId]) return '';
+    return _fileHandles[tabId].name || '';
+};
+
+// ── Save to existing file handle (silent, no picker) ─────────────────────────
+// Returns: "OK" on success, "NO_HANDLE" if no handle, "DELETED" if file gone, "ERROR:msg" on failure
+window.saveToExistingHandle = async function (tabId, base64) {
+    if (!_fileHandles[tabId]) return 'NO_HANDLE';
+    try {
+        var handle = _fileHandles[tabId];
+        var bytes = Uint8Array.from(atob(base64), function (c) { return c.charCodeAt(0); });
+
+        // Verify we still have write permission
+        var perm = await handle.queryPermission({ mode: 'readwrite' });
+        if (perm !== 'granted') {
+            perm = await handle.requestPermission({ mode: 'readwrite' });
+            if (perm !== 'granted') return 'NO_HANDLE';
+        }
+
+        // Check file still exists before writing
+        try {
+            await handle.getFile();
+        } catch (fileErr) {
+            if (fileErr.name === 'NotFoundError') return 'DELETED';
+            throw fileErr;
+        }
+
+        var writable = await handle.createWritable();
+        await writable.write(bytes);
+        await writable.close();
+        return 'OK';
+    } catch (e) {
+        console.warn('[Save] write to handle failed:', e);
+        if (e.name === 'NotAllowedError' || e.name === 'SecurityError') {
+            delete _fileHandles[tabId];
+            return 'NO_HANDLE';
+        }
+        if (e.name === 'NotFoundError') return 'DELETED';
+        return 'ERROR:' + e.message;
+    }
+};
+
+// ── Save As with native file picker ──────────────────────────────────────────
+// Returns: chosen filename on success, "CANCELLED" if user cancelled, "ERROR:msg" on failure
+window.saveWithFilePicker = async function (tabId, base64, suggestedName, formatExt) {
+    try {
+        var mimeMap = {
+            '.docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+            '.doc':  'application/msword',
+            '.rtf':  'application/rtf',
+            '.txt':  'text/plain'
+        };
+        var descMap = {
+            '.docx': 'Word Document',
+            '.doc':  'Word 97-2003 Document',
+            '.rtf':  'Rich Text Format',
+            '.txt':  'Plain Text'
+        };
+
+        var ext  = formatExt || '.docx';
+        var mime = mimeMap[ext] || mimeMap['.docx'];
+        var desc = descMap[ext] || 'Document';
+
+        // Build file type filters — selected format first, then others
+        var types = [];
+        types.push({
+            description: desc,
+            accept: {}
+        });
+        types[0].accept[mime] = [ext];
+
+        // Add other formats as additional options
+        Object.keys(mimeMap).forEach(function (e) {
+            if (e !== ext) {
+                var t = { description: descMap[e], accept: {} };
+                t.accept[mimeMap[e]] = [e];
+                types.push(t);
+            }
+        });
+
+        var handle = await window.showSaveFilePicker({
+            suggestedName: suggestedName || 'Untitled.docx',
+            types: types
+        });
+
+        var bytes = Uint8Array.from(atob(base64), function (c) { return c.charCodeAt(0); });
+        var writable = await handle.createWritable();
+        await writable.write(bytes);
+        await writable.close();
+
+        // Store handle for future "Save" calls
+        _fileHandles[tabId] = handle;
+
+        // Return the actual chosen filename
+        return handle.name || suggestedName;
+    } catch (e) {
+        if (e.name === 'AbortError') return 'CANCELLED';
+        console.error('[SaveAs] picker failed:', e);
+        return 'ERROR:' + e.message;
+    }
+};
+
+// ── Open file with native picker (returns handle for write-back) ──────────────
+// Returns: { fileName, base64 } on success, { error: "CANCELLED" } or { error: "msg" }
+window.openWithFilePicker = async function (tabId) {
+    try {
+        var types = [
+            {
+                description: 'Documents',
+                accept: {
+                    'application/vnd.openxmlformats-officedocument.wordprocessingml.document': ['.docx'],
+                    'application/msword': ['.doc'],
+                    'application/rtf': ['.rtf'],
+                    'text/plain': ['.txt']
+                }
+            }
+        ];
+
+        var handles = await window.showOpenFilePicker({
+            multiple: false,
+            types: types
+        });
+
+        if (!handles || handles.length === 0) return { error: 'CANCELLED' };
+
+        var handle = handles[0];
+        var file = await handle.getFile();
+
+        // Read file as base64
+        var arrayBuffer = await file.arrayBuffer();
+        var bytes = new Uint8Array(arrayBuffer);
+        var binary = '';
+        for (var i = 0; i < bytes.length; i++) {
+            binary += String.fromCharCode(bytes[i]);
+        }
+        var base64 = btoa(binary);
+
+        // Store the handle so Save can write back to this file
+        _fileHandles[tabId] = handle;
+
+        return { fileName: file.name, base64: base64 };
+    } catch (e) {
+        if (e.name === 'AbortError') return { error: 'CANCELLED' };
+        console.error('[Open] picker failed:', e);
+        return { error: e.message };
+    }
+};
+
+// ── Fallback download (for browsers without File System Access API) ──────────
+window.downloadFile = function (base64, fileName) {
+    var bytes = Uint8Array.from(atob(base64), function (c) { return c.charCodeAt(0); });
+    var blob  = new Blob([bytes], { type: "application/vnd.openxmlformats-officedocument.wordprocessingml.document" });
+    var url   = URL.createObjectURL(blob);
+    var a     = document.createElement("a");
+    a.href = url; a.download = fileName;
+    document.body.appendChild(a); a.click();
+    document.body.removeChild(a); URL.revokeObjectURL(url);
+};
+
+window.downloadFileAs = function (base64, fileName, mimeType) {
+    var bytes = Uint8Array.from(atob(base64), function (c) { return c.charCodeAt(0); });
+    var blob  = new Blob([bytes], { type: mimeType || 'application/octet-stream' });
+    var url   = URL.createObjectURL(blob);
+    var a     = document.createElement('a');
+    a.href = url; a.download = fileName;
+    document.body.appendChild(a); a.click();
+    document.body.removeChild(a); URL.revokeObjectURL(url);
+};
+
 
 // ══════════════════════════════════════════════════════════════════════════════
 // THEME
@@ -144,19 +380,6 @@ window.saveAndSwitch = function (newSfdt, isBlank) {
     else         container.documentEditor.open(newSfdt);
     container.documentEditor.focusIn();
     return oldSfdt;
-};
-
-// ══════════════════════════════════════════════════════════════════════════════
-// DOWNLOAD
-// ══════════════════════════════════════════════════════════════════════════════
-window.downloadFile = function (base64, fileName) {
-    var bytes = Uint8Array.from(atob(base64), function(c){ return c.charCodeAt(0); });
-    var blob  = new Blob([bytes], { type: "application/vnd.openxmlformats-officedocument.wordprocessingml.document" });
-    var url   = URL.createObjectURL(blob);
-    var a     = document.createElement("a");
-    a.href = url; a.download = fileName;
-    document.body.appendChild(a); a.click();
-    document.body.removeChild(a); URL.revokeObjectURL(url);
 };
 
 // ══════════════════════════════════════════════════════════════════════════════
@@ -241,8 +464,6 @@ window.getDocumentText = function () {
 
 // ══════════════════════════════════════════════════════════════════════════════
 // DOCUMENT OUTLINE
-// Parses the serialized SFDT for heading-level paragraphs.
-// Returns [{level:1,text:"Intro"}, {level:2,text:"Background"}, ...]
 // ══════════════════════════════════════════════════════════════════════════════
 window.getDocumentOutline = function () {
     if (!container) return [];
@@ -265,7 +486,6 @@ window.getDocumentOutline = function () {
 
 function _extractHeadings(block, results) {
     if (!block) return;
-    // Paragraph with a heading style
     if (block.paragraphFormat && block.paragraphFormat.styleName) {
         var style = block.paragraphFormat.styleName;
         var level = 0;
@@ -281,7 +501,6 @@ function _extractHeadings(block, results) {
             if (text) results.push({ level: level, text: text });
         }
     }
-    // Recurse into rows/cells (tables)
     if (block.rows) {
         block.rows.forEach(function(row) {
             (row.cells || []).forEach(function(cell) {
@@ -350,9 +569,6 @@ window.scrollChatToBottom = function () {
 
 // ══════════════════════════════════════════════════════════════════════════════
 // AUTO-SAVE & RECOVERY
-// Storage keys:
-//   deditor-autosave-v1:{tabId}  →  { sfdt, fileName, savedAt }
-//   deditor-autosave-ids         →  JSON array of tabIds
 // ══════════════════════════════════════════════════════════════════════════════
 var AUTOSAVE_INTERVAL = 60000;
 var _autoSaveTimer    = null;
@@ -427,7 +643,6 @@ function _getAutoSaveIds() {
     try { var r = localStorage.getItem('deditor-autosave-ids'); return r ? JSON.parse(r) : []; } catch (e) { return []; }
 }
 
-// Bridge custom event → Blazor DotNetObjectReference
 window.registerAutoSaveListener = function (dotNetRef) {
     document.addEventListener('deditor-autosaved', function (e) {
         try { dotNetRef.invokeMethodAsync('OnAutoSaved', e.detail); } catch (err) {}
@@ -436,8 +651,6 @@ window.registerAutoSaveListener = function (dotNetRef) {
 
 // ══════════════════════════════════════════════════════════════════════════════
 // RECENT FILES
-// Stored as JSON array (max 10) under 'deditor-recent-files'
-// Each entry: { name: string, openedAt: ISO string }
 // ══════════════════════════════════════════════════════════════════════════════
 window.getRecentFiles = function () {
     try {
@@ -461,14 +674,11 @@ window.clearRecentFiles = function () {
 
 // ══════════════════════════════════════════════════════════════════════════════
 // SLASH-COMMAND SNIPPET INSERTION
-// Deletes the "/" that triggered the picker, then inserts the snippet body.
 // ══════════════════════════════════════════════════════════════════════════════
 window.insertSnippetText = function (body) {
     if (!container || !body) return;
     var editor = container.documentEditor.editor;
-    // Delete the "/" character that triggered the picker
     editor.delete();
-    // Insert each line; use insertText for lines and onEnter for newlines
     var lines = body.split('\n');
     lines.forEach(function(line, idx) {
         editor.insertText(line);
@@ -479,31 +689,39 @@ window.insertSnippetText = function (body) {
 
 // ══════════════════════════════════════════════════════════════════════════════
 // KEYBOARD LISTENERS
-// Registers:
-//   • Escape  → Blazor.OnEscapePressed  (exit focus mode, close slash picker)
-//   • "/" key → Blazor.OnSlashTyped     (open slash snippet picker)
 // ══════════════════════════════════════════════════════════════════════════════
 window.registerEditorKeyListeners = function (dotNetRef) {
-      window._blazorEditorRef = dotNetRef;
-    // Escape — capture phase so it fires before Syncfusion
+    window._blazorEditorRef = dotNetRef;
+
     document.addEventListener('keydown', function (e) {
         if (e.key === 'Escape') {
             try { dotNetRef.invokeMethodAsync('OnEscapePressed'); } catch (err) {}
         }
     }, true);
 
-    // Slash — wait for Syncfusion to render the char, then check if "/" was typed
-    // We listen on the viewer container (the actual editable canvas area)
+    document.addEventListener('keydown', function (e) {
+        if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's' && !e.shiftKey) {
+            e.preventDefault();
+            e.stopPropagation();
+            try { dotNetRef.invokeMethodAsync('OnSaveShortcut'); } catch (err) {}
+            return;
+        }
+        if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's' && e.shiftKey) {
+            e.preventDefault();
+            e.stopPropagation();
+            try { dotNetRef.invokeMethodAsync('OnSaveAsShortcut'); } catch (err) {}
+            return;
+        }
+    }, true);
+
     function attachSlashListener() {
         var canvas = document.getElementById('container1_editor_viewerContainer');
         if (!canvas || !window._deContainer) { setTimeout(attachSlashListener, 600); return; }
 
         canvas.addEventListener('keyup', function (e) {
             if (e.key !== '/') return;
-            // Get cursor position on screen to position the picker
             var sel = window._deContainer ? window._deContainer.documentEditor.selection : null;
             if (!sel) return;
-            // Use the caret rectangle from the viewer if available, else fall back to mouse position
             var rect = canvas.getBoundingClientRect();
             var x = rect.left + 80;
             var y = rect.top  + 120;

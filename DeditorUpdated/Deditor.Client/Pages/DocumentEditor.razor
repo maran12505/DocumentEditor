@@ -11,7 +11,6 @@
     .logo-img { width:28px;height:28px;object-fit:contain;border-radius:6px; }
     .logo-text { font-size:15px;color:#2f2f2f; }
 
-    /* ── Auto-save chip ──────────────────────────────────────────────────── */
     .n-autosave-chip {
         display:inline-flex;align-items:center;gap:5px;font-size:.71rem;font-weight:500;
         color:var(--n-text-3);padding:2px 8px;border-radius:100px;
@@ -19,7 +18,6 @@
     }
     .n-autosave-chip.saved { color:var(--n-green);background:var(--n-green-bg); }
 
-    /* ── Recovery banner ─────────────────────────────────────────────────── */
     .n-recovery-banner {
         display:flex;align-items:center;gap:10px;padding:9px 16px;
         background:#FFF8E6;border-bottom:1px solid #F5D87A;
@@ -35,24 +33,37 @@
     .n-recovery-btn-dismiss:hover { background:rgba(0,0,0,.06); }
     [data-theme="dark"] .n-recovery-btn-dismiss { color:#F5C842;border-color:#5A4500; }
 
-    /* ── Dirty dot on tab ────────────────────────────────────────────────── */
     .n-sheet-tab-dirty { display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--n-amber);flex-shrink:0;margin-left:1px; }
 
-    /* ── Focus mode ──────────────────────────────────────────────────────── */
     .n-focus-mode .n-topbar,
     .n-focus-mode .n-left-sidebar,
     .n-focus-mode .n-ai-sidebar,
     .n-focus-mode .n-sheet-bar { display:none !important; }
     .n-focus-mode .n-main { flex:1; }
-    .n-focus-exit {
-        position:fixed;top:12px;right:14px;z-index:9999;
-        background:rgba(0,0,0,.55);color:#fff;border:none;
-        border-radius:6px;padding:5px 14px;font-size:.78rem;font-weight:600;
-        cursor:pointer;font-family:inherit;letter-spacing:.02em;
-    }
-    .n-focus-exit:hover { background:rgba(0,0,0,.75); }
+.n-focus-exit {
+    position: fixed;
+    top: 12px;
+    right: 14px;
+    z-index: 9999;
+    background: rgba(0,0,0,.45);
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    padding: 8px;
+    cursor: pointer;
+    font-family: inherit;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background .15s;
+}
+.n-focus-exit:hover {
+    background: rgba(0,0,0,.7);
+}
+.n-focus-exit svg {
+    display: block;
+}
 
-    /* ── Slash picker ────────────────────────────────────────────────────── */
     .n-slash-picker {
         position:fixed;z-index:9998;background:var(--n-surface);
         border:1px solid var(--n-border);border-radius:8px;
@@ -70,7 +81,6 @@
     .n-slash-desc  { font-size:.68rem;color:var(--n-text-3); }
     .n-slash-header { font-size:.62rem;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--n-text-3);padding:6px 10px 3px; }
 
-    /* ── Sidebar tab switcher ────────────────────────────────────────────── */
     .n-left-tabs { display:flex;gap:0;padding:0 8px;border-bottom:1px solid var(--n-border-soft);flex-shrink:0;background:var(--n-surface); }
     .n-left-tab {
         padding:7px 9px;font-size:.7rem;font-weight:600;color:var(--n-text-3);
@@ -80,13 +90,75 @@
     .n-left-tab:hover { color:var(--n-text); }
     .n-left-tab.active { color:var(--n-text);border-bottom-color:var(--n-accent); }
 
-    /* ── Stats grid ──────────────────────────────────────────────────────── */
-    .n-stats-grid { display:grid;grid-template-columns:1fr 1fr;gap:6px;padding:2px 0; }
-    .n-stat-card { background:var(--n-hover);border-radius:6px;padding:8px 10px;display:flex;flex-direction:column;gap:2px; }
-    .n-stat-value { font-size:1.05rem;font-weight:700;color:var(--n-text);line-height:1; }
-    .n-stat-label { font-size:.63rem;color:var(--n-text-3);text-transform:uppercase;letter-spacing:.4px; }
+    .n-sidebar-section { padding: 14px 14px 12px; }
+    .n-sidebar-section + .n-sidebar-section { border-top: 1px solid var(--n-border-soft); }
+    .n-sidebar-section-label {
+        font-size: .6rem; font-weight: 700; text-transform: uppercase;
+        letter-spacing: .8px; color: var(--n-text-3); margin-bottom: 10px;
+        display: flex; align-items: center; gap: 6px; user-select: none;
+    }
 
-    /* ── Outline ─────────────────────────────────────────────────────────── */
+    .n-file-card {
+        display: flex; align-items: center; gap: 10px;
+        padding: 9px 11px; border-radius: 8px;
+        background: var(--n-hover); transition: background .15s;
+    }
+    .n-file-card:hover { background: var(--n-active); }
+    .n-file-card-icon {
+        width: 34px; height: 34px; border-radius: 7px;
+        background: var(--n-accent); display: flex;
+        align-items: center; justify-content: center; flex-shrink: 0;
+    }
+    .n-file-card-icon svg { color: #fff; }
+    .n-file-card-info { flex: 1; min-width: 0; }
+    .n-file-card-name {
+        font-size: .8rem; font-weight: 600; color: var(--n-text);
+        overflow: hidden; text-overflow: ellipsis; white-space: nowrap; line-height: 1.3;
+    }
+    .n-file-card-meta {
+        font-size: .66rem; color: var(--n-text-3);
+        display: flex; align-items: center; gap: 4px; margin-top: 2px;
+    }
+    .n-file-card-meta svg { flex-shrink: 0; opacity: .6; }
+
+    .n-stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .n-stat-card {
+        background: var(--n-hover); border-radius: 8px;
+        padding: 10px 12px; display: flex; flex-direction: column;
+        gap: 3px; transition: background .15s;
+    }
+    .n-stat-card:hover { background: var(--n-active); }
+    .n-stat-value {
+        font-size: 1.1rem; font-weight: 700; color: var(--n-text);
+        line-height: 1; letter-spacing: -.02em;
+    }
+    .n-stat-label {
+        font-size: .58rem; color: var(--n-text-3);
+        text-transform: uppercase; letter-spacing: .5px; font-weight: 600;
+    }
+
+    .n-stats-footer {
+        display: flex; align-items: center; justify-content: space-between;
+        margin-top: 10px; padding: 7px 10px;
+        background: var(--n-hover); border-radius: 7px;
+        font-size: .71rem; color: var(--n-text-2);
+    }
+    .n-stats-footer-value { font-weight: 700; color: var(--n-text); }
+
+    .n-refresh-btn {
+        display: inline-flex; align-items: center; gap: 5px;
+        padding: 5px 12px;
+        border: 1px solid var(--n-border); border-radius: 10px;
+        background: transparent; color: var(--n-text-3);
+        font-size: .7rem; font-weight: 600; font-family: inherit;
+        cursor: pointer; transition: background .12s, color .12s, border-color .12s;
+        user-select: none; margin-left: 40px;
+    }
+    .n-refresh-btn:hover { background: var(--n-hover); color: var(--n-text); border-color: var(--n-text-3); }
+    .n-refresh-btn:active { background: var(--n-active); }
+    .n-refresh-btn svg { opacity: .6; transition: opacity .12s; }
+    .n-refresh-btn:hover svg { opacity: 1; }
+
     .n-outline-item { display:flex;align-items:center;gap:5px;padding:5px 6px;border-radius:4px;cursor:pointer;font-size:.76rem;color:var(--n-text-2);transition:background .1s,color .1s;line-height:1.3; }
     .n-outline-item:hover { background:var(--n-hover);color:var(--n-text); }
     .n-outline-h1 { padding-left:6px;font-weight:600;color:var(--n-text); }
@@ -97,18 +169,107 @@
     .n-outline-h2 .n-outline-dot { background:var(--n-text-3); }
     .n-outline-h3 .n-outline-dot { background:var(--n-border); }
 
-    /* ── Recent files ────────────────────────────────────────────────────── */
     .n-recent-item { display:flex;align-items:center;gap:7px;padding:6px 8px;border-radius:5px;cursor:pointer;transition:background .1s; }
     .n-recent-item:hover { background:var(--n-hover); }
     .n-recent-name { font-size:.77rem;font-weight:500;color:var(--n-text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1; }
     .n-recent-time { font-size:.65rem;color:var(--n-text-3);flex-shrink:0; }
+
+    /* ── File Not Found Modal ────────────────────────────────────────── */
+    .n-modal-overlay {
+        position: fixed; inset: 0; z-index: 10000;
+        background: rgba(0,0,0,.45);
+        display: flex; align-items: center; justify-content: center;
+        animation: n-fade-in .15s ease;
+    }
+    [data-theme="dark"] .n-modal-overlay { background: rgba(0,0,0,.65); }
+    @@keyframes n-fade-in { from { opacity: 0; } to { opacity: 1; } }
+
+    .n-modal {
+        background: var(--n-surface, #fff);
+        border: 1px solid var(--n-border, #e0e0e0);
+        border-radius: 12px;
+        box-shadow: 0 16px 48px rgba(0,0,0,.18);
+        width: 440px; max-width: 92vw;
+        padding: 0;
+        animation: n-slide-up .2s ease;
+        font-family: inherit;
+    }
+    @@keyframes n-slide-up { from { transform: translateY(12px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+
+    .n-modal-header {
+        display: flex; align-items: center; justify-content: space-between;
+        padding: 18px 22px 14px;
+        border-bottom: 1px solid var(--n-border-soft, #f0f0f0);
+    }
+    .n-modal-header h3 {
+        margin: 0; font-size: .95rem; font-weight: 700;
+        color: var(--n-text, #2f2f2f);
+        display: flex; align-items: center; gap: 8px;
+    }
+    .n-modal-close {
+        background: none; border: none; cursor: pointer;
+        color: var(--n-text-3, #999); font-size: 1.1rem;
+        width: 28px; height: 28px; border-radius: 6px;
+        display: flex; align-items: center; justify-content: center;
+        transition: background .12s, color .12s;
+    }
+    .n-modal-close:hover { background: var(--n-hover, #f5f5f5); color: var(--n-text, #2f2f2f); }
+
+    .n-modal-body {
+        padding: 18px 22px 22px;
+        font-size: .84rem; color: var(--n-text-2, #555);
+        line-height: 1.55;
+    }
+    .n-modal-body strong { color: var(--n-text, #2f2f2f); }
+    .n-modal-body code {
+        background: var(--n-hover, #f5f5f5); padding: 2px 6px;
+        border-radius: 4px; font-size: .78rem;
+        word-break: break-all;
+    }
+
+    .n-modal-footer {
+        display: flex; align-items: center; justify-content: flex-end;
+        gap: 8px; padding: 12px 22px 18px;
+    }
+    .n-modal-btn {
+        padding: 8px 18px; border-radius: 7px;
+        font-size: .8rem; font-weight: 600;
+        font-family: inherit; cursor: pointer;
+        transition: background .12s, color .12s, border-color .12s;
+        border: 1px solid transparent;
+    }
+    .n-modal-btn-secondary {
+        background: transparent; color: var(--n-text-2, #666);
+        border-color: var(--n-border, #e0e0e0);
+    }
+    .n-modal-btn-secondary:hover { background: var(--n-hover, #f5f5f5); color: var(--n-text, #2f2f2f); }
+    .n-modal-btn-primary {
+        background: var(--n-accent, #2383E2); color: #fff;
+        border-color: var(--n-accent, #2383E2);
+    }
+    .n-modal-btn-primary:hover { filter: brightness(1.08); }
+
+    /* ── Save group in topbar ────────────────────────────────────────── */
+    .n-save-group {
+        display: flex; align-items: center; gap: 2px;
+    }
+    .n-save-group .n-btn { font-size: .72rem; gap: 4px; }
+    .n-save-group .n-btn svg { flex-shrink: 0; }
 </style>
 
 <div class="n-workspace @(_focusMode ? "n-focus-mode" : "")">
 
 @if (_focusMode)
 {
-    <button class="n-focus-exit" @onclick="ExitFocusMode" title="Exit Focus Mode (Esc)">✕ Exit</button>
+   <button class="n-focus-exit" @onclick="ExitFocusMode" title="Exit Focus Mode (Esc)">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+        <polyline points="15 3 21 3 21 9"/>
+        <polyline points="9 21 3 21 3 15"/>
+        <line x1="21" y1="3" x2="14" y2="10"/>
+        <line x1="3" y1="21" x2="10" y2="14"/>
+    </svg>
+</button>
+
 }
 
 <!-- ══ Top bar ══════════════════════════════════════════════════════════ -->
@@ -129,24 +290,11 @@
         <InputFile id="fileUploadInput" OnChange="HandleFileUpload" accept=".docx,.doc,.rtf,.txt" style="display:none" />
     </div>
 
-    @* <div class="n-toolbar-center">
-        @if (!string.IsNullOrEmpty(_autoSaveLabel))
-        {
-            <span class="n-autosave-chip @(_autoSaveLabel.StartsWith("✓") ? "saved" : "")">
-                @if (_autoSaveLabel.StartsWith("✓"))
-                {
-                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
-                }
-                else
-                {
-                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-                }
-                @_autoSaveLabel
-            </span>
-        }
-    </div> *@
-
     <div class="n-topbar-right">
+
+
+        @* <div class="n-divider-v"></div> *@
+
         <button class="n-btn n-btn-ghost n-btn-icon @(_navPaneOpen ? "active" : "")"
                 @onclick="ToggleNavigationPane" title="Find &amp; Replace (Ctrl+F)">
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
@@ -154,11 +302,16 @@
             </svg>
         </button>
 
-        <button class="n-btn n-btn-ghost n-btn-icon" @onclick="EnterFocusMode" title="Focus Mode — hide all chrome">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/>
-            </svg>
-        </button>
+<button class="n-btn n-btn-ghost n-btn-icon" @onclick="EnterFocusMode" title="Focus Mode">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+        <polyline points="4 14 4 20 10 20"/>
+        <polyline points="20 10 20 4 14 4"/>
+        <line x1="14" y1="10" x2="20" y2="4"/>
+        <line x1="4" y1="20" x2="10" y2="14"/>
+    </svg>
+</button>
+
+     <div class="n-divider-v"></div>
 
         <button class="n-btn n-btn-ghost n-btn-icon n-theme-toggle"
                 @onclick="ToggleTheme"
@@ -181,6 +334,29 @@
             }
         </button>
 
+
+       <!-- ── Save / Save As ────────────────────────────────────────── -->
+        <div class="n-save-group">
+            <!-- Save — classic floppy disk -->
+            <button class="n-btn1 n-btn-ghost" @onclick="SaveDocument" title="Save (Ctrl+S)">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
+                    <polyline points="17 21 17 13 7 13 7 21"/>
+                    <polyline points="7 3 7 8 15 8"/>
+                </svg>
+            </button>
+
+             <div class="n-divider-v"></div>
+            <!-- Save As — floppy disk with pencil/edit indicator -->
+            <button class="n-btn1 n-btn-ghost" @onclick="SaveAsDocument" title="Save As (Ctrl+Shift+S)">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M13 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v4"/>
+                    <polyline points="7 3 7 8 15 8"/>
+                    <path d="M17 21.5l4.5-4.5-2-2L15 19.5V21.5h2z"/>
+                </svg>
+            </button>
+        </div>
+
         <button class="n-btn n-btn-ghost n-btn-icon n-track-btn @(_trackChangesEnabled ? "n-track-active" : "")"
                 @onclick="ToggleTrackChanges"
                 title="@(_trackChangesEnabled ? "Track Changes ON — click to disable" : "Track Changes OFF — click to enable")">
@@ -191,6 +367,8 @@
             Track
             @if (_trackChangesEnabled) { <span class="n-track-dot" title="Track Changes is ON"></span> }
         </button>
+
+
 
         <div class="n-divider-v"></div>
         <button class="n-btn n-btn-ai @(_chatOpen ? "active" : "")" @onclick="ToggleChat" title="Toggle AI Assistant">
@@ -222,80 +400,63 @@
     {
         <aside class="n-left-sidebar">
             <div class="n-left-header">
-                <div class="n-left-title">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
-                        <rect x="3" y="3" width="18" height="18" rx="2"/><line x1="9" y1="3" x2="9" y2="21"/>
-                    </svg>
-                    Panel
-                </div>
+                <div class="n-left-title"></div>
                 <button class="n-left-close" @onclick="ToggleLeftPane" title="Close">✕</button>
             </div>
 
-            <!-- Tab bar -->
             <div class="n-left-tabs">
-                <div class="n-left-tab @(_leftTab=="files"   ? "active" : "")" @onclick='()=>_leftTab="files"'>Files</div>
-                <div class="n-left-tab @(_leftTab=="stats"   ? "active" : "")" @onclick='()=>{_leftTab="stats";_ =RefreshStats();}'>Stats</div>
-                @* <div class="n-left-tab @(_leftTab=="outline" ? "active" : "")" @onclick='()=>{_leftTab="outline";_ =RefreshOutline();}'>Outline</div> *@
-                <div class="n-left-tab @(_leftTab=="recent"  ? "active" : "")" @onclick='()=>{_leftTab="recent";_ =LoadRecentFiles();}'>Recent</div>
+                <div class="n-left-tab @(_leftTab=="files" ? "active" : "")" @onclick='()=>_leftTab="files"'>Files</div>
             </div>
 
-            <!-- ══ FILES TAB ══════════════════════════════════════════ -->
             @if (_leftTab == "files")
             {
-                <div class="n-left-section">
-                    <div class="n-left-section-label">File</div>
-                    <div class="n-left-file-info">
-                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <div class="n-sidebar-section">
+                    <div class="n-sidebar-section-label">
+                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" opacity=".5">
                             <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
                             <polyline points="14 2 14 8 20 8"/>
                         </svg>
-                        <span class="n-left-filename" id="left-sidebar-filename">@(_currentFileName ?? "Untitled.docx")</span>
+                        Current File
                     </div>
-                    @if (!string.IsNullOrEmpty(_autoSaveLabel))
-                    {
-                        <div style="font-size:.68rem;color:var(--n-text-3);padding:3px 6px 0;display:flex;align-items:center;gap:4px;">
-                            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-                            @_autoSaveLabel
+                    <div class="n-file-card">
+                        <div class="n-file-card-icon">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                                <polyline points="14 2 14 8 20 8"/>
+                            </svg>
                         </div>
-                    }
+                        <div class="n-file-card-info">
+                            <div class="n-file-card-name" id="left-sidebar-filename">@(_currentFileName ?? "Untitled.docx")</div>
+                            @if (!string.IsNullOrEmpty(_autoSaveLabel))
+                            {
+                                <div class="n-file-card-meta">
+                                    <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                                        <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+                                    </svg>
+                                    @_autoSaveLabel
+                                </div>
+                            }
+                            else
+                            {
+                                <div class="n-file-card-meta">.docx</div>
+                            }
+                        </div>
+                    </div>
                 </div>
-                <div class="n-left-divider"></div>
-                <div class="n-left-section">
-                    <div class="n-left-section-label">Actions</div>
-                    <button class="n-left-action-btn" @onclick="NewDocumentFromPanel" title="New blank document">
-                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-                            <polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/>
-                        </svg>
-                        New Document
-                    </button>
-                    <button class="n-left-action-btn" @onclick="OpenFileDialog" title="Open .docx / .doc / .rtf / .txt">
-                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
-                        </svg>
-                        Open File…
-                    </button>
-                    <button class="n-left-action-btn" @onclick="SaveDocument" title="Save as .docx">
-                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
-                            <polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/>
-                        </svg>
-                        Save
-                    </button>
-                    <button class="n-left-action-btn" @onclick="EnterFocusMode" title="Distraction-free writing">
-                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/>
-                        </svg>
-                        Focus Mode
-                    </button>
-                </div>
-            }
 
-            <!-- ══ STATS TAB ══════════════════════════════════════════ -->
-            @if (_leftTab == "stats")
-            {
-                <div class="n-left-section">
-                    <div class="n-left-section-label">Document Statistics</div>
+                <div class="n-sidebar-section">
+                    <div class="n-sidebar-section-label">
+                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" opacity=".5">
+                            <path d="M18 20V10"/><path d="M12 20V4"/><path d="M6 20v-6"/>
+                        </svg>
+                        Document Statistics
+                        <button class="n-refresh-btn" @onclick="RefreshStats">
+                            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                                <polyline points="23 4 23 10 17 10"/>
+                                <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
+                            </svg>
+                        </button>
+                    </div>
                     <div class="n-stats-grid">
                         <div class="n-stat-card"><div class="n-stat-value">@_statWords.ToString("N0")</div><div class="n-stat-label">Words</div></div>
                         <div class="n-stat-card"><div class="n-stat-value">@_statChars.ToString("N0")</div><div class="n-stat-label">Characters</div></div>
@@ -304,52 +465,13 @@
                     </div>
                     @if (_statWords > 0)
                     {
-                        <div style="margin-top:8px;font-size:.71rem;color:var(--n-text-3);">
-                            Avg sentence length: <strong>@_statAvgSentLen</strong> words
+                        <div class="n-stats-footer">
+                            <span>Avg sentence length</span>
+                            <span class="n-stats-footer-value">@_statAvgSentLen words</span>
                         </div>
                     }
-                    <button class="n-left-action-btn" style="margin-top:8px;" @onclick="RefreshStats">
-                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
-                        Refresh
-                    </button>
                 </div>
-            }
 
-            <!-- ══ OUTLINE TAB ════════════════════════════════════════ -->
-            @if (_leftTab == "outline")
-            {
-                <div class="n-left-section">
-                    <div class="n-left-section-label">Document Outline</div>
-                    @if (_outlineItems.Count == 0)
-                    {
-                        <div style="font-size:.74rem;color:var(--n-text-3);font-style:italic;padding:4px 2px;">
-                            No headings found. Use Heading styles in the ribbon.
-                        </div>
-                    }
-                    else
-                    {
-                        <div style="display:flex;flex-direction:column;gap:1px;">
-                            @foreach (var item in _outlineItems)
-                            {
-                                <div class="n-outline-item n-outline-h@(item.Level)"
-                                     @onclick="() => ScrollToHeading(item.Text)"
-                                     title="@item.Text">
-                                    <span class="n-outline-dot"></span>
-                                    <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">@item.Text</span>
-                                </div>
-                            }
-                        </div>
-                    }
-                    <button class="n-left-action-btn" style="margin-top:8px;" @onclick="RefreshOutline">
-                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
-                        Refresh
-                    </button>
-                </div>
-            }
-
-            <!-- ══ RECENT TAB ═════════════════════════════════════════ -->
-            @if (_leftTab == "recent")
-            {
                 <div class="n-left-section">
                     <div class="n-left-section-label">Recent Files</div>
                     @if (_recentFiles.Count == 0)
@@ -378,20 +500,17 @@
 
             @if (!string.IsNullOrEmpty(_statusMessage))
             {
-                <div class="n-left-divider"></div>
-                <div class="n-left-section">
+                <div class="n-sidebar-section" style="padding-top:8px;padding-bottom:8px;">
                     <span class="n-status @_statusClass">@_statusMessage</span>
                 </div>
             }
         </aside>
     }
 
-    <!-- Document editor -->
     <div class="n-editor-area">
         <div id="container1"></div>
     </div>
 
-    <!-- AI Chat sidebar -->
     @if (_chatOpen)
     {
         <aside class="n-ai-sidebar">
@@ -399,19 +518,14 @@
                 <div class="n-ai-title"><span class="n-ai-star">✦</span> AI Assistant</div>
                 <button class="n-ai-close" @onclick="ToggleChat" title="Close">✕</button>
             </div>
-
-            <!-- Row 1: proofread / copyedit -->
             <div class="n-ai-actions">
                 <button class="n-ai-action-btn" @onclick='() => QuickAction("proofread")' disabled="@_chatLoading">Proofread</button>
                 <button class="n-ai-action-btn" @onclick='() => QuickAction("copyedit")'  disabled="@_chatLoading">Copyedit</button>
             </div>
-            <!-- Row 2: summarize / title / tone -->
             <div class="n-ai-actions" style="border-top:none;padding-top:0;gap:4px;">
                 <button class="n-ai-action-btn" @onclick='() => QuickAction("summarize")' disabled="@_chatLoading" title="1-paragraph summary">Summarize</button>
-                @* <button class="n-ai-action-btn" @onclick='() => QuickAction("title")'     disabled="@_chatLoading" title="3 title suggestions">Suggest Title</button> *@
                 <button class="n-ai-action-btn" @onclick='() => QuickAction("tone")'      disabled="@_chatLoading" title="Tone analysis">Tone</button>
             </div>
-
             <div class="n-ai-messages" id="chatMessages">
                 @if (_chatMessages.Count == 0)
                 {
@@ -446,7 +560,6 @@
                     </div>
                 }
             </div>
-
             <div class="n-ai-input-row">
                 <textarea class="n-ai-input" placeholder="Ask about your document…"
                           @bind="_chatInput" @bind:event="oninput"
@@ -458,7 +571,7 @@
         </aside>
     }
 
-</div><!-- /n-main -->
+</div>
 
 <!-- ══ Sheet Tab Bar ══════════════════════════════════════════════════════ -->
 <div class="n-sheet-bar">
@@ -492,9 +605,8 @@
             </div>
         }
     </div>
-</div><!-- /n-sheet-bar -->
+</div>
 
-<!-- ══ Slash-command Snippet Picker ═══════════════════════════════════════ -->
 @if (_slashPickerVisible)
 {
     <div class="n-slash-picker" id="slashPicker"
@@ -517,68 +629,84 @@
     </div>
 }
 
-</div><!-- /n-workspace -->
+<!-- ══ File Not Found Modal ══════════════════════════════════════════════ -->
+@if (_showFileNotFoundModal)
+{
+    <div class="n-modal-overlay" @onclick="CloseFileNotFoundModal">
+        <div class="n-modal" @onclick:stopPropagation="true">
+            <div class="n-modal-header">
+                <h3>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#D44C47" stroke-width="2">
+                        <circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/>
+                    </svg>
+                    DEditor
+                </h3>
+                <button class="n-modal-close" @onclick="CloseFileNotFoundModal">✕</button>
+            </div>
+            <div class="n-modal-body">
+                Cannot find the <code>@_missingFileName</code> file.
+                <br/><br/>
+                It may have been moved, renamed, or deleted. Would you like to save it to a new location?
+            </div>
+            <div class="n-modal-footer">
+                <button class="n-modal-btn n-modal-btn-secondary" @onclick="CloseFileNotFoundModal">Cancel</button>
+                <button class="n-modal-btn n-modal-btn-primary" @onclick="HandleFileNotFoundSaveAs">Save As</button>
+            </div>
+        </div>
+    </div>
+}
+
+</div>
 
 @code {
-    // ════════════════════════════════════════════════════════════════════════
-    // STATE
-    // ════════════════════════════════════════════════════════════════════════
     private string _statusMessage = string.Empty;
     private string _statusClass   = string.Empty;
 
-    // Tabs
     private List<DocTab> _tabs        = new();
     private Guid         _activeTabId = Guid.Empty;
     private DocTab?      ActiveTab    => _tabs.FirstOrDefault(t => t.Id == _activeTabId);
     private string?      _currentFileName => ActiveTab?.FileName;
 
-    // Panes
     private bool   _navPaneOpen  = false;
     private bool   _leftPaneOpen = false;
     private bool   _chatOpen     = false;
     private string _leftTab      = "files";
 
-    // Chat
     private bool   _chatLoading = false;
     private string _chatInput   = string.Empty;
     private List<ChatMessage> _chatMessages = new();
 
-    // Theme / track-changes
     private bool _isDarkMode          = false;
     private bool _trackChangesEnabled = true;
 
-    // Rename
     private Guid             _renamingTabId  = Guid.Empty;
     private string           _renameValue    = string.Empty;
     private ElementReference _renameInputRef;
 
-    // ── Auto-save ─────────────────────────────────────────────────────────
     private string              _autoSaveLabel      = string.Empty;
     private bool                _showRecoveryBanner = false;
     private List<RecoveryDraft> _recoveryDrafts     = new();
     private DotNetObjectReference<DocumentEditor>? _selfRef;
 
-    // ── Focus mode ────────────────────────────────────────────────────────
     private bool _focusMode = false;
 
-    // ── Stats ─────────────────────────────────────────────────────────────
     private int    _statWords      = 0;
     private int    _statChars      = 0;
     private int    _statSentences  = 0;
     private string _statReadMin    = "0";
     private string _statAvgSentLen = "0";
 
-    // ── Outline ───────────────────────────────────────────────────────────
     private List<OutlineItem> _outlineItems = new();
-
-    // ── Recent files ──────────────────────────────────────────────────────
     private List<RecentFile> _recentFiles = new();
 
-    // ── Slash picker ──────────────────────────────────────────────────────
     private bool   _slashPickerVisible = false;
     private double _slashPickerX       = 0;
     private double _slashPickerY       = 0;
     private int    _slashActiveIdx     = 0;
+
+    // ── File Not Found modal state ───────────────────────────────────────────
+    private bool   _showFileNotFoundModal = false;
+    private string _missingFileName       = string.Empty;
 
     private readonly List<Snippet> _snippets = new()
     {
@@ -592,9 +720,6 @@
         new("📝", "TODO",        "Task placeholder",           "TODO: "),
     };
 
-    // ════════════════════════════════════════════════════════════════════════
-    // LIFECYCLE
-    // ════════════════════════════════════════════════════════════════════════
     protected override Task OnInitializedAsync()
     {
         var tab = new DocTab { FileName = "Untitled.docx", IsEmpty = true };
@@ -608,7 +733,6 @@
         if (firstRender)
         {
             await JSRuntime.InvokeVoidAsync("initializeDocumentEditor");
-
             var savedTheme = await JSRuntime.InvokeAsync<string>("getThemePreference");
             if (savedTheme == "dark")
             {
@@ -616,7 +740,6 @@
                 await JSRuntime.InvokeVoidAsync("applyTheme", true);
                 StateHasChanged();
             }
-
             _selfRef = DotNetObjectReference.Create(this);
             await JSRuntime.InvokeVoidAsync("registerAutoSaveListener", _selfRef);
             await JSRuntime.InvokeVoidAsync("registerEditorKeyListeners", _selfRef);
@@ -624,231 +747,175 @@
             await StartAutoSaveForActiveTab();
             await LoadRecentFiles();
         }
-
         await JSRuntime.InvokeVoidAsync("setDocumentName", _currentFileName ?? "Untitled.docx");
     }
 
-    // ── JS-invokable ──────────────────────────────────────────────────────
-    [JSInvokable]
-    public void OnAutoSaved(string timeString)
-    {
-        _autoSaveLabel = $"✓ Saved {timeString}";
-        if (ActiveTab != null) ActiveTab.IsModified = true;
-        StateHasChanged();
-    }
+    // ── JSInvokable callbacks ────────────────────────────────────────────────
+    [JSInvokable] public void OnAutoSaved(string timeString) { _autoSaveLabel = $"✓ Saved {timeString}"; if (ActiveTab != null) ActiveTab.IsModified = true; StateHasChanged(); }
+    [JSInvokable] public async Task OnEscapePressed() { if (_showFileNotFoundModal) { _showFileNotFoundModal = false; StateHasChanged(); return; } if (_focusMode) { _focusMode = false; await JSRuntime.InvokeVoidAsync("resizeEditor"); } if (_slashPickerVisible) { _slashPickerVisible = false; } StateHasChanged(); }
+    [JSInvokable] public Task OnSlashTyped(double x, double y) { _slashPickerX = x; _slashPickerY = Math.Max(8, y - 275); _slashActiveIdx = 0; _slashPickerVisible = true; StateHasChanged(); return Task.CompletedTask; }
+    [JSInvokable] public async Task NewTabFromJS() => await NewTab();
+    [JSInvokable] public async Task OpenFileFromJS() => await OpenFileDialog();
+    [JSInvokable] public async Task OnSaveShortcut() => await SaveDocument();
+    [JSInvokable] public async Task OnSaveAsShortcut() => await SaveAsDocument();
 
-    [JSInvokable]
-    public async Task OnEscapePressed()
-    {
-        if (_focusMode)          { _focusMode = false; await JSRuntime.InvokeVoidAsync("resizeEditor"); }
-        if (_slashPickerVisible) { _slashPickerVisible = false; }
-        StateHasChanged();
-    }
+    private async Task EnterFocusMode() { _focusMode = true; _leftPaneOpen = false; _chatOpen = false; StateHasChanged(); await JSRuntime.InvokeVoidAsync("resizeEditor"); }
+    private async Task ExitFocusMode() { _focusMode = false; StateHasChanged(); await JSRuntime.InvokeVoidAsync("resizeEditor"); }
 
-    [JSInvokable]
-    public Task OnSlashTyped(double x, double y)
-    {
-        _slashPickerX      = x;
-        _slashPickerY      = Math.Max(8, y - 275);
-        _slashActiveIdx    = 0;
-        _slashPickerVisible = true;
-        StateHasChanged();
-        return Task.CompletedTask;
-    }
-    [JSInvokable]
-    public async Task NewTabFromJS() => await NewTab();
- 
-    [JSInvokable]
-    public async Task OpenFileFromJS() => await OpenFileDialog();
-
-    // ════════════════════════════════════════════════════════════════════════
-    // FOCUS MODE
-    // ════════════════════════════════════════════════════════════════════════
-    private async Task EnterFocusMode()
-    {
-        _focusMode = true; _leftPaneOpen = false; _chatOpen = false;
-        StateHasChanged();
-        await JSRuntime.InvokeVoidAsync("resizeEditor");
-    }
-
-    private async Task ExitFocusMode()
-    {
-        _focusMode = false;
-        StateHasChanged();
-        await JSRuntime.InvokeVoidAsync("resizeEditor");
-    }
-
-    // ════════════════════════════════════════════════════════════════════════
-    // DOC STATS
-    // ════════════════════════════════════════════════════════════════════════
     private async Task RefreshStats()
     {
         var text = await JSRuntime.InvokeAsync<string>("getDocumentText");
-        if (string.IsNullOrWhiteSpace(text))
-        {
-            _statWords = _statChars = _statSentences = 0;
-            _statReadMin = "0"; _statAvgSentLen = "0";
-            StateHasChanged(); return;
-        }
-        var words     = text.Split(new[]{' ','\n','\r','\t'}, StringSplitOptions.RemoveEmptyEntries);
-        var sentences = text.Split(new[]{'.','!','?'},         StringSplitOptions.RemoveEmptyEntries);
-        _statWords     = words.Length;
-        _statChars     = text.Length;
-        _statSentences = sentences.Length;
-        _statReadMin   = Math.Max(1, _statWords / 200).ToString();
-        _statAvgSentLen = _statSentences > 0
-            ? Math.Round((double)_statWords / _statSentences, 1).ToString("0.0") : "0";
+        if (string.IsNullOrWhiteSpace(text)) { _statWords = _statChars = _statSentences = 0; _statReadMin = "0"; _statAvgSentLen = "0"; StateHasChanged(); return; }
+        var words = text.Split(new[]{' ','\n','\r','\t'}, StringSplitOptions.RemoveEmptyEntries);
+        var sentences = text.Split(new[]{'.','!','?'}, StringSplitOptions.RemoveEmptyEntries);
+        _statWords = words.Length; _statChars = text.Length; _statSentences = sentences.Length;
+        _statReadMin = Math.Max(1, _statWords / 200).ToString();
+        _statAvgSentLen = _statSentences > 0 ? Math.Round((double)_statWords / _statSentences, 1).ToString("0.0") : "0";
         StateHasChanged();
     }
 
-    // ════════════════════════════════════════════════════════════════════════
-    // DOCUMENT OUTLINE
-    // ════════════════════════════════════════════════════════════════════════
-    private async Task RefreshOutline()
-    {
-        try
-        {
-            var items = await JSRuntime.InvokeAsync<OutlineItem[]>("getDocumentOutline");
-            _outlineItems = items?.ToList() ?? new();
-        }
-        catch { _outlineItems = new(); }
-        StateHasChanged();
-    }
+    private async Task RefreshOutline() { try { var items = await JSRuntime.InvokeAsync<OutlineItem[]>("getDocumentOutline"); _outlineItems = items?.ToList() ?? new(); } catch { _outlineItems = new(); } StateHasChanged(); }
+    private async Task ScrollToHeading(string text) => await JSRuntime.InvokeVoidAsync("searchInDocument", text);
 
-    private async Task ScrollToHeading(string text)
-        => await JSRuntime.InvokeVoidAsync("searchInDocument", text);
+    private async Task LoadRecentFiles() { try { var arr = await JSRuntime.InvokeAsync<RecentFileDto[]>("getRecentFiles"); _recentFiles = arr?.Select(r => new RecentFile { Name = r.Name, OpenedAt = r.OpenedAt, TimeLabel = FormatRelativeTime(r.OpenedAt) }).ToList() ?? new(); } catch { _recentFiles = new(); } StateHasChanged(); }
+    private async Task ClearRecentFiles() { await JSRuntime.InvokeVoidAsync("clearRecentFiles"); _recentFiles.Clear(); StateHasChanged(); }
+    private async Task PushRecentFile(string fileName) { await JSRuntime.InvokeVoidAsync("pushRecentFile", fileName, DateTime.UtcNow.ToString("o")); await LoadRecentFiles(); }
 
-    // ════════════════════════════════════════════════════════════════════════
-    // RECENT FILES
-    // ════════════════════════════════════════════════════════════════════════
-    private async Task LoadRecentFiles()
-    {
-        try
-        {
-            var arr = await JSRuntime.InvokeAsync<RecentFileDto[]>("getRecentFiles");
-            _recentFiles = arr?.Select(r => new RecentFile
-            {
-                Name      = r.Name,
-                OpenedAt  = r.OpenedAt,
-                TimeLabel = FormatRelativeTime(r.OpenedAt)
-            }).ToList() ?? new();
-        }
-        catch { _recentFiles = new(); }
-        StateHasChanged();
-    }
+    private async Task InsertSnippet(int idx) { _slashPickerVisible = false; StateHasChanged(); if (idx < 0 || idx >= _snippets.Count) return; await JSRuntime.InvokeVoidAsync("insertSnippetText", _snippets[idx].Body); }
 
-    private async Task ClearRecentFiles()
-    {
-        await JSRuntime.InvokeVoidAsync("clearRecentFiles");
-        _recentFiles.Clear(); StateHasChanged();
-    }
+    private async Task StartAutoSaveForActiveTab() { var tab = ActiveTab; if (tab == null) return; await JSRuntime.InvokeVoidAsync("startAutoSave", tab.Id.ToString(), tab.FileName); _autoSaveLabel = string.Empty; }
 
-    private async Task PushRecentFile(string fileName)
-    {
-        await JSRuntime.InvokeVoidAsync("pushRecentFile", fileName, DateTime.UtcNow.ToString("o"));
-        await LoadRecentFiles();
-    }
-
-    // ════════════════════════════════════════════════════════════════════════
-    // SLASH SNIPPETS
-    // ════════════════════════════════════════════════════════════════════════
-    private async Task InsertSnippet(int idx)
-    {
-        _slashPickerVisible = false; StateHasChanged();
-        if (idx < 0 || idx >= _snippets.Count) return;
-        await JSRuntime.InvokeVoidAsync("insertSnippetText", _snippets[idx].Body);
-    }
-
-    // ════════════════════════════════════════════════════════════════════════
-    // AUTO-SAVE & RECOVERY
-    // ════════════════════════════════════════════════════════════════════════
-    private async Task StartAutoSaveForActiveTab()
-    {
-        var tab = ActiveTab;
-        if (tab == null) return;
-        await JSRuntime.InvokeVoidAsync("startAutoSave", tab.Id.ToString(), tab.FileName);
-        _autoSaveLabel = string.Empty;
-    }
-
-    private async Task CheckForRecoveryDrafts()
-    {
-        try
-        {
-            var drafts = await JSRuntime.InvokeAsync<RecoveryDraft[]>("checkAutoSaveRecovery");
-            if (drafts != null && drafts.Length > 0)
-            {
-                _recoveryDrafts = drafts.ToList(); _showRecoveryBanner = true;
-                StateHasChanged();
-            }
-        }
-        catch { }
-    }
+    private async Task CheckForRecoveryDrafts() { try { var drafts = await JSRuntime.InvokeAsync<RecoveryDraft[]>("checkAutoSaveRecovery"); if (drafts != null && drafts.Length > 0) { _recoveryDrafts = drafts.ToList(); _showRecoveryBanner = true; StateHasChanged(); } } catch { } }
 
     private async Task RestoreFirstDraft()
     {
-        var draft = _recoveryDrafts.FirstOrDefault();
-        if (draft == null) return;
-        var tab = ActiveTab;
-        if (tab != null) { tab.FileName = draft.FileName; tab.Sfdt = draft.Sfdt; tab.IsModified = true; tab.IsEmpty = false; }
+        var draft = _recoveryDrafts.FirstOrDefault(); if (draft == null) return;
+        var tab = ActiveTab; if (tab != null) { tab.FileName = draft.FileName; tab.Sfdt = draft.Sfdt; tab.IsModified = true; tab.IsEmpty = false; }
         await JSRuntime.InvokeVoidAsync("loadRecoveredDraft", draft.Sfdt);
         await JSRuntime.InvokeVoidAsync("clearAutoSaveDraft", draft.TabId);
-        _recoveryDrafts.Remove(draft);
-        _showRecoveryBanner = _recoveryDrafts.Count > 0;
-        await StartAutoSaveForActiveTab();
-        SetStatus($"✅ Restored: {draft.FileName}", false);
-        StateHasChanged();
+        _recoveryDrafts.Remove(draft); _showRecoveryBanner = _recoveryDrafts.Count > 0;
+        await StartAutoSaveForActiveTab(); SetStatus($"✅ Restored: {draft.FileName}", false); StateHasChanged();
     }
 
-    private async Task DismissRecovery()
-    {
-        await JSRuntime.InvokeVoidAsync("dismissAllDrafts");
-        _recoveryDrafts.Clear(); _showRecoveryBanner = false; StateHasChanged();
-    }
+    private async Task DismissRecovery() { await JSRuntime.InvokeVoidAsync("dismissAllDrafts"); _recoveryDrafts.Clear(); _showRecoveryBanner = false; StateHasChanged(); }
 
     private static string FormatRelativeTime(string? iso)
     {
         if (string.IsNullOrEmpty(iso) || !DateTime.TryParse(iso, out var dt)) return "recently";
         var diff = DateTime.UtcNow - dt.ToUniversalTime();
-        if (diff.TotalMinutes < 1)  return "just now";
-        if (diff.TotalMinutes < 60) return $"{(int)diff.TotalMinutes}m ago";
-        if (diff.TotalHours   < 24) return $"{(int)diff.TotalHours}h ago";
-        return dt.ToString("MMM d");
+        if (diff.TotalMinutes < 1) return "just now"; if (diff.TotalMinutes < 60) return $"{(int)diff.TotalMinutes}m ago";
+        if (diff.TotalHours < 24) return $"{(int)diff.TotalHours}h ago"; return dt.ToString("MMM d");
     }
 
-    // ════════════════════════════════════════════════════════════════════════
-    // THEME / PANES
-    // ════════════════════════════════════════════════════════════════════════
-    private async Task ToggleTheme()
-    {
-        _isDarkMode = !_isDarkMode;
-        await JSRuntime.InvokeVoidAsync("applyTheme", _isDarkMode);
-        StateHasChanged();
-    }
-
-    private void ToggleLeftPane()
-    {
-        _leftPaneOpen = !_leftPaneOpen; StateHasChanged();
-        JSRuntime.InvokeVoidAsync("resizeEditor");
-    }
-    
-
+    private async Task ToggleTheme() { _isDarkMode = !_isDarkMode; await JSRuntime.InvokeVoidAsync("applyTheme", _isDarkMode); StateHasChanged(); }
+    private void ToggleLeftPane() { _leftPaneOpen = !_leftPaneOpen; StateHasChanged(); JSRuntime.InvokeVoidAsync("resizeEditor"); }
     private async Task NewDocumentFromPanel() => await NewTab();
-
     private async Task OpenFileDialog()
-        => await JSRuntime.InvokeVoidAsync("eval", "document.getElementById('fileUploadInput').click()");
+    {
+        // Try native File System Access API first — gives us a writable handle for Save
+        var hasApi = await JSRuntime.InvokeAsync<bool>("hasFileSystemAccess");
+        if (hasApi)
+        {
+            await OpenWithNativePicker();
+            return;
+        }
+        // Fallback: use standard <InputFile> (no write-back handle)
+        await JSRuntime.InvokeVoidAsync("eval", "document.getElementById('fileUploadInput').click()");
+    }
 
-    // ════════════════════════════════════════════════════════════════════════
-    // FILE UPLOAD
-    // ════════════════════════════════════════════════════════════════════════
+    private async Task OpenWithNativePicker()
+    {
+        // Determine which tab to load into
+        var activeTab = ActiveTab;
+        DocTab targetTab;
+        if (activeTab != null && activeTab.IsEmpty)
+        {
+            targetTab = activeTab;
+        }
+        else
+        {
+            targetTab = new DocTab { FileName = "loading", IsEmpty = false };
+            _tabs.Add(targetTab);
+            _activeTabId = targetTab.Id;
+            StateHasChanged();
+        }
+
+        var tabId = targetTab.Id.ToString();
+
+        try
+        {
+            // Open native picker — JS stores the handle and returns file data
+            var result = await JSRuntime.InvokeAsync<JsonElement>("openWithFilePicker", tabId);
+
+            // Check for error/cancel
+            if (result.TryGetProperty("error", out var errorProp))
+            {
+                var err = errorProp.GetString() ?? "";
+                if (err == "CANCELLED")
+                {
+                    // Remove the tab if we just created it
+                    if (targetTab.FileName == "loading") { _tabs.Remove(targetTab); if (activeTab != null) _activeTabId = activeTab.Id; }
+                    StateHasChanged();
+                    return;
+                }
+                SetStatus($"❌ {err}", true);
+                if (targetTab.FileName == "loading") { _tabs.Remove(targetTab); if (activeTab != null) _activeTabId = activeTab.Id; }
+                StateHasChanged();
+                return;
+            }
+
+            var fileName = result.GetProperty("fileName").GetString() ?? "Untitled.docx";
+            var base64   = result.GetProperty("base64").GetString() ?? "";
+
+            SetStatus("⏳ Opening document…", false);
+            StateHasChanged();
+
+            // Convert base64 back to bytes and send to server for SFDT conversion
+            var fileBytes = Convert.FromBase64String(base64);
+            using var formContent = new MultipartFormDataContent();
+            var byteContent = new ByteArrayContent(fileBytes);
+            byteContent.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/octet-stream");
+            formContent.Add(byteContent, "files", fileName);
+
+            var response = await Http.PostAsync("api/documenteditor/import", formContent);
+            if (!response.IsSuccessStatusCode)
+            {
+                SetStatus($"❌ {await response.Content.ReadAsStringAsync()}", true);
+                await JSRuntime.InvokeVoidAsync("clearFileHandle", tabId);
+                if (targetTab.FileName == "loading") { _tabs.Remove(targetTab); if (activeTab != null) _activeTabId = activeTab.Id; }
+                StateHasChanged();
+                return;
+            }
+
+            var sfdt = await response.Content.ReadAsStringAsync();
+
+            // Keep the original filename and extension so Save writes in the correct format
+            targetTab.FileName   = fileName;
+            targetTab.Sfdt       = sfdt;
+            targetTab.IsModified = false;
+            targetTab.IsEmpty    = false;
+            _activeTabId         = targetTab.Id;
+
+            await JSRuntime.InvokeVoidAsync("loadDocument", sfdt);
+            await StartAutoSaveForActiveTab();
+            await PushRecentFile(fileName);
+            SetStatus($"✅ Opened: {fileName}", false);
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            SetStatus($"❌ {ex.Message}", true);
+            await JSRuntime.InvokeVoidAsync("clearFileHandle", tabId);
+            if (targetTab.FileName == "loading") { _tabs.Remove(targetTab); if (activeTab != null) _activeTabId = activeTab.Id; }
+            StateHasChanged();
+        }
+    }
+
     private async Task HandleFileUpload(InputFileChangeEventArgs e)
     {
-        var file = e.File;
-        if (file == null) return;
+        var file = e.File; if (file == null) return;
         var ext = Path.GetExtension(file.Name).ToLowerInvariant();
-        if (ext is not (".docx" or ".doc" or ".rtf" or ".txt"))
-        {
-            SetStatus("❌ Unsupported file type.", true); return;
-        }
+        if (ext is not (".docx" or ".doc" or ".rtf" or ".txt")) { SetStatus("❌ Unsupported file type.", true); return; }
         SetStatus("⏳ Opening document…", false);
         try
         {
@@ -856,43 +923,173 @@
             var stream = file.OpenReadStream(maxAllowedSize: 104_857_600);
             formContent.Add(new StreamContent(stream), "files", file.Name);
             var response = await Http.PostAsync("api/documenteditor/import", formContent);
-            if (!response.IsSuccessStatusCode)
-            {
-                SetStatus($"❌ {await response.Content.ReadAsStringAsync()}", true); return;
-            }
-            var sfdt     = await response.Content.ReadAsStringAsync();
-            var fileName = Path.GetFileNameWithoutExtension(file.Name) + ".docx";
-            var activeTab = ActiveTab;
-            DocTab targetTab;
+            if (!response.IsSuccessStatusCode) { SetStatus($"❌ {await response.Content.ReadAsStringAsync()}", true); return; }
+            var sfdt = await response.Content.ReadAsStringAsync();
+            var fileName = file.Name; // Keep original name and extension
+            var activeTab = ActiveTab; DocTab targetTab;
             if (activeTab != null && activeTab.IsEmpty) { targetTab = activeTab; }
-            else
-            {
-                targetTab = new DocTab { FileName = "loading", IsEmpty = false };
-                _tabs.Add(targetTab); _activeTabId = targetTab.Id;
-            }
-            targetTab.FileName = fileName; targetTab.Sfdt = sfdt;
-            targetTab.IsModified = false;  targetTab.IsEmpty = false;
+            else { targetTab = new DocTab { FileName = "loading", IsEmpty = false }; _tabs.Add(targetTab); _activeTabId = targetTab.Id; }
+            targetTab.FileName = fileName; targetTab.Sfdt = sfdt; targetTab.IsModified = false; targetTab.IsEmpty = false;
+            // File opened via upload — no file handle, so first Save will trigger Save As
+            await JSRuntime.InvokeVoidAsync("clearFileHandle", targetTab.Id.ToString());
             await JSRuntime.InvokeVoidAsync("loadDocument", sfdt);
-            await StartAutoSaveForActiveTab();
-            await PushRecentFile(fileName);
-            SetStatus($"✅ Opened: {file.Name}", false);
-            StateHasChanged();
+            await StartAutoSaveForActiveTab(); await PushRecentFile(fileName);
+            SetStatus($"✅ Opened: {file.Name}", false); StateHasChanged();
         }
         catch (Exception ex) { SetStatus($"❌ {ex.Message}", true); }
     }
 
-    // ════════════════════════════════════════════════════════════════════════
-    // SAVE
-    // ════════════════════════════════════════════════════════════════════════
+    // ═════════════════════════════════════════════════════════════════════════
+    // SAVE — Notepad-style logic:
+    //   1. If file handle exists → overwrite silently (no picker)
+    //   2. If no handle → redirect to Save As (opens OS file picker)
+    // ═════════════════════════════════════════════════════════════════════════
     private async Task SaveDocument()
     {
-        if (ActiveTab == null || ActiveTab.IsEmpty) { SetStatus("❌ No document to save.", true); return; }
+        if (ActiveTab == null) { SetStatus("❌ No document to save.", true); return; }
+
+        // If tab was marked empty (new doc), check if user actually typed something
+        if (ActiveTab.IsEmpty)
+        {
+            var check = await JSRuntime.InvokeAsync<string>("getDocumentContent");
+            if (string.IsNullOrEmpty(check)) { SetStatus("❌ No document to save.", true); return; }
+            ActiveTab.IsEmpty = false; // user has content now
+        }
+
+        var tabId = ActiveTab.Id.ToString();
+
+        // Check if we have File System Access API and an existing handle
+        var hasApi    = await JSRuntime.InvokeAsync<bool>("hasFileSystemAccess");
+        var hasHandle = hasApi && await JSRuntime.InvokeAsync<bool>("hasFileHandle", tabId);
+
+        if (!hasHandle)
+        {
+            // No previous save location → redirect to Save As
+            await SaveAsDocument();
+            return;
+        }
+
+        // We have a handle — convert to bytes on server, then overwrite the file
         SetStatus("⏳ Saving…", false);
         try
         {
             var sfdt = await JSRuntime.InvokeAsync<string>("getDocumentContent");
             if (string.IsNullOrEmpty(sfdt)) { SetStatus("❌ Nothing to save.", true); return; }
-            ActiveTab.Sfdt = sfdt; ActiveTab.IsModified = false;
+            ActiveTab.Sfdt = sfdt;
+
+            var response = await Http.PostAsJsonAsync("api/documenteditor/save",
+                new { Content = sfdt, FileName = ActiveTab.FileName });
+            if (!response.IsSuccessStatusCode) { SetStatus("❌ Save failed.", true); return; }
+
+            var base64 = Convert.ToBase64String(await response.Content.ReadAsByteArrayAsync());
+            var result  = await JSRuntime.InvokeAsync<string>("saveToExistingHandle", tabId, base64);
+
+            if (result == "OK")
+            {
+                ActiveTab.IsModified = false;
+                await JSRuntime.InvokeVoidAsync("clearAutoSaveDraft", tabId);
+                _autoSaveLabel = string.Empty;
+                SetStatus($"✅ Saved: {ActiveTab.FileName}", false);
+            }
+            else if (result == "DELETED")
+            {
+                // File was deleted from disk — show Notepad-style "Cannot find" popup
+                _missingFileName = ActiveTab.FileName;
+                _showFileNotFoundModal = true;
+                SetStatus("", false);
+            }
+            else if (result == "NO_HANDLE")
+            {
+                // Handle was lost (permission denied, etc.) → fall back to Save As
+                await SaveAsDocument();
+                return;
+            }
+            else
+            {
+                SetStatus($"❌ {result}", true);
+            }
+            StateHasChanged();
+        }
+        catch (Exception ex) { SetStatus($"❌ {ex.Message}", true); }
+    }
+
+    // ═════════════════════════════════════════════════════════════════════════
+    // SAVE AS — Always opens OS native file picker
+    // ═════════════════════════════════════════════════════════════════════════
+    private async Task SaveAsDocument()
+    {
+        if (ActiveTab == null) { SetStatus("❌ No document to save.", true); return; }
+
+        // If tab was marked empty (new doc), check if user actually typed something
+        if (ActiveTab.IsEmpty)
+        {
+            var check = await JSRuntime.InvokeAsync<string>("getDocumentContent");
+            if (string.IsNullOrEmpty(check)) { SetStatus("❌ No document to save.", true); return; }
+            ActiveTab.IsEmpty = false;
+        }
+
+        var hasApi = await JSRuntime.InvokeAsync<bool>("hasFileSystemAccess");
+        if (!hasApi)
+        {
+            // Fallback for older browsers: use traditional download
+            await FallbackDownloadSave();
+            return;
+        }
+
+        SetStatus("⏳ Preparing…", false);
+        try
+        {
+            var sfdt = await JSRuntime.InvokeAsync<string>("getDocumentContent");
+            if (string.IsNullOrEmpty(sfdt)) { SetStatus("❌ Nothing to save.", true); return; }
+            ActiveTab.Sfdt = sfdt;
+
+            var formatExt = Path.GetExtension(ActiveTab.FileName).ToLowerInvariant();
+            if (formatExt is not (".docx" or ".doc" or ".rtf" or ".txt")) formatExt = ".docx";
+
+            var response = await Http.PostAsJsonAsync("api/documenteditor/save",
+                new { Content = sfdt, FileName = ActiveTab.FileName });
+            if (!response.IsSuccessStatusCode) { SetStatus("❌ Save failed.", true); return; }
+
+            var base64 = Convert.ToBase64String(await response.Content.ReadAsByteArrayAsync());
+            var tabId  = ActiveTab.Id.ToString();
+
+            // This opens the native OS "Save As" file picker
+            var result = await JSRuntime.InvokeAsync<string>(
+                "saveWithFilePicker", tabId, base64, ActiveTab.FileName, formatExt);
+
+            if (result == "CANCELLED")
+            {
+                SetStatus("Save cancelled.", false);
+            }
+            else if (result.StartsWith("ERROR:"))
+            {
+                SetStatus($"❌ {result[6..]}", true);
+            }
+            else
+            {
+                // result = chosen filename from the picker
+                ActiveTab.FileName   = result;
+                ActiveTab.IsModified = false;
+                await JSRuntime.InvokeVoidAsync("clearAutoSaveDraft", tabId);
+                _autoSaveLabel = string.Empty;
+                await StartAutoSaveForActiveTab();
+                await PushRecentFile(result);
+                SetStatus($"✅ Saved: {result}", false);
+            }
+            StateHasChanged();
+        }
+        catch (Exception ex) { SetStatus($"❌ {ex.Message}", true); }
+    }
+
+    // Fallback for browsers without File System Access API
+    private async Task FallbackDownloadSave()
+    {
+        SetStatus("⏳ Saving…", false);
+        try
+        {
+            var sfdt = await JSRuntime.InvokeAsync<string>("getDocumentContent");
+            if (string.IsNullOrEmpty(sfdt)) { SetStatus("❌ Nothing to save.", true); return; }
+            ActiveTab!.Sfdt = sfdt; ActiveTab.IsModified = false;
             var response = await Http.PostAsJsonAsync("api/documenteditor/save",
                 new { Content = sfdt, FileName = ActiveTab.FileName });
             if (!response.IsSuccessStatusCode) { SetStatus("❌ Save failed.", true); return; }
@@ -900,57 +1097,50 @@
             await JSRuntime.InvokeVoidAsync("downloadFile", base64, ActiveTab.FileName);
             await JSRuntime.InvokeVoidAsync("clearAutoSaveDraft", ActiveTab.Id.ToString());
             _autoSaveLabel = string.Empty;
-            SetStatus($"✅ Saved: {ActiveTab.FileName}", false);
-            StateHasChanged();
+            SetStatus($"✅ Saved: {ActiveTab.FileName}", false); StateHasChanged();
         }
         catch (Exception ex) { SetStatus($"❌ {ex.Message}", true); }
     }
 
-    // ════════════════════════════════════════════════════════════════════════
-    // CASE TRANSFORMS
-    // ════════════════════════════════════════════════════════════════════════
-    private async Task ApplyTitleCase()
+    // ═════════════════════════════════════════════════════════════════════════
+    // FILE NOT FOUND MODAL — handles deleted file scenario
+    // ═════════════════════════════════════════════════════════════════════════
+    private void CloseFileNotFoundModal()
     {
-        var r = await JSRuntime.InvokeAsync<string>("applyTitleCase");
-        SetStatus(r == "NO_SELECTION" ? "⚠️ Select text first." : "✅ Title Case applied.", r == "NO_SELECTION");
-    }
-    private async Task ApplyInitialCaps()
-    {
-        var r = await JSRuntime.InvokeAsync<string>("applyInitialCaps");
-        SetStatus(r == "NO_SELECTION" ? "⚠️ Select text first." : "✅ Initial Caps applied.", r == "NO_SELECTION");
-    }
-    private async Task ApplyEssentialCaps()
-    {
-        var r = await JSRuntime.InvokeAsync<string>("applyEssentialCaps");
-        if      (r == "NO_SELECTION")   SetStatus("⚠️ Select text first.", true);
-        else if (r == "NLP_NOT_LOADED") SetStatus("❌ NLP not loaded yet.", true);
-        else                            SetStatus("✅ Essential Caps applied.", false);
+        _showFileNotFoundModal = false;
+        StateHasChanged();
     }
 
-    // ════════════════════════════════════════════════════════════════════════
-    // AI CHAT
-    // ════════════════════════════════════════════════════════════════════════
-    private void ToggleChat()
+    private async Task HandleFileNotFoundSaveAs()
     {
-        _chatOpen = !_chatOpen; StateHasChanged();
-        JSRuntime.InvokeVoidAsync("resizeEditor");
+        _showFileNotFoundModal = false;
+        StateHasChanged();
+
+        // Clear the stale handle — force Save As to open a fresh picker
+        if (ActiveTab != null)
+        {
+            await JSRuntime.InvokeVoidAsync("clearFileHandle", ActiveTab.Id.ToString());
+        }
+
+        // Open Save As picker so user can pick a new location
+        await SaveAsDocument();
     }
+
+    private async Task ApplyTitleCase() { var r = await JSRuntime.InvokeAsync<string>("applyTitleCase"); SetStatus(r == "NO_SELECTION" ? "⚠️ Select text first." : "✅ Title Case applied.", r == "NO_SELECTION"); }
+    private async Task ApplyInitialCaps() { var r = await JSRuntime.InvokeAsync<string>("applyInitialCaps"); SetStatus(r == "NO_SELECTION" ? "⚠️ Select text first." : "✅ Initial Caps applied.", r == "NO_SELECTION"); }
+    private async Task ApplyEssentialCaps() { var r = await JSRuntime.InvokeAsync<string>("applyEssentialCaps"); if (r == "NO_SELECTION") SetStatus("⚠️ Select text first.", true); else if (r == "NLP_NOT_LOADED") SetStatus("❌ NLP not loaded yet.", true); else SetStatus("✅ Essential Caps applied.", false); }
+
+    private void ToggleChat() { _chatOpen = !_chatOpen; StateHasChanged(); JSRuntime.InvokeVoidAsync("resizeEditor"); }
 
     private async Task QuickAction(string action)
     {
-        var selected    = await JSRuntime.InvokeAsync<string>("getSelectedText");
+        var selected = await JSRuntime.InvokeAsync<string>("getSelectedText");
         bool isWholeDoc = string.IsNullOrWhiteSpace(selected);
         if (isWholeDoc) selected = await JSRuntime.InvokeAsync<string>("getDocumentText");
-        if (string.IsNullOrWhiteSpace(selected))
-        {
-            AddMessage("assistant", "⚠️ The document appears to be empty.", null); return;
-        }
-        var trimmed = TrimToWordLimit(selected, 3000);
-        var scope   = isWholeDoc ? "whole document" : "selection";
-        var label   = isWholeDoc ? "📄 Whole document" : $"<em>{Truncate(selected, 80)}</em>";
-        if (trimmed.Length < selected.Length)
-            AddMessage("assistant", "⚠️ Document is large — analyzing first ~3,000 words.", null);
-
+        if (string.IsNullOrWhiteSpace(selected)) { AddMessage("assistant", "⚠️ The document appears to be empty.", null); return; }
+        var trimmed = TrimToWordLimit(selected, 3000); var scope = isWholeDoc ? "whole document" : "selection";
+        var label = isWholeDoc ? "📄 Whole document" : $"<em>{Truncate(selected, 80)}</em>";
+        if (trimmed.Length < selected.Length) AddMessage("assistant", "⚠️ Document is large — analyzing first ~3,000 words.", null);
         string prompt = action switch
         {
             "proofread" => $"Proofread the following {scope}. List each issue with a short explanation and corrected version. If no issues, say so.\n\nText:\n{trimmed}",
@@ -958,19 +1148,9 @@
             "summarize" => $"Write a concise 1-paragraph summary of the following {scope}.\n\nText:\n{trimmed}",
             "title"     => $"Suggest 3 engaging, specific titles for the following text. Number them.\n\nText:\n{trimmed}",
             "tone"      => $"Analyze the tone of the following text. Classify it (e.g. formal, academic, casual) and briefly explain why.\n\nText:\n{trimmed}",
-            _           => trimmed
+            _ => trimmed
         };
-
-        var userLabel = action switch
-        {
-            "proofread" => $"🔍 Proofread: {label}",
-            "copyedit"  => $"✏️ Copyedit: {label}",
-            "summarize" => $"📋 Summarize: {label}",
-            "title"     => $"💡 Suggest Title: {label}",
-            "tone"      => $"🎭 Tone Check: {label}",
-            _           => label
-        };
-
+        var userLabel = action switch { "proofread" => $"🔍 Proofread: {label}", "copyedit" => $"✏️ Copyedit: {label}", "summarize" => $"📋 Summarize: {label}", "title" => $"💡 Suggest Title: {label}", "tone" => $"🎭 Tone Check: {label}", _ => label };
         AddMessage("user", userLabel, null);
         await CallAI(prompt, extractApplicable: action == "copyedit");
     }
@@ -978,50 +1158,25 @@
     private async Task SendChatMessage()
     {
         if (string.IsNullOrWhiteSpace(_chatInput) || _chatLoading) return;
-        var userText = _chatInput.Trim();
-        _chatInput = string.Empty;
+        var userText = _chatInput.Trim(); _chatInput = string.Empty;
         AddMessage("user", System.Web.HttpUtility.HtmlEncode(userText), null);
         if (IsSimpleCheck(userText)) { await RunFreeCheck(userText); return; }
         var selected = await JSRuntime.InvokeAsync<string>("getSelectedText");
-        var prompt   = string.IsNullOrWhiteSpace(selected) ? userText
-            : $"{userText}\n\nSelected text for context:\n{selected}";
+        var prompt = string.IsNullOrWhiteSpace(selected) ? userText : $"{userText}\n\nSelected text for context:\n{selected}";
         await CallAI(prompt, extractApplicable: false);
     }
 
-    private async Task HandleChatKeyDown(KeyboardEventArgs e)
-    {
-        if (e.Key == "Enter" && !e.ShiftKey) await SendChatMessage();
-    }
+    private async Task HandleChatKeyDown(KeyboardEventArgs e) { if (e.Key == "Enter" && !e.ShiftKey) await SendChatMessage(); }
 
-    private static bool IsSimpleCheck(string input)
-    {
-        var l = input.ToLower();
-        return l.Contains("word count") || l.Contains("how many words") ||
-               l.Contains("sentence count") || l.Contains("how long") ||
-               l.Contains("character count");
-    }
+    private static bool IsSimpleCheck(string input) { var l = input.ToLower(); return l.Contains("word count") || l.Contains("how many words") || l.Contains("sentence count") || l.Contains("how long") || l.Contains("character count"); }
 
     private async Task RunFreeCheck(string query)
     {
-        var text  = await JSRuntime.InvokeAsync<string>("getDocumentText");
-        var lower = query.ToLower();
-        string reply;
-        if (lower.Contains("word"))
-        {
-            var c = string.IsNullOrWhiteSpace(text) ? 0
-                : text.Split(new[]{' ','\n','\r','\t'}, StringSplitOptions.RemoveEmptyEntries).Length;
-            reply = $"📊 Word count: <strong>{c:N0}</strong> words";
-        }
-        else if (lower.Contains("sentence"))
-        {
-            var c = string.IsNullOrWhiteSpace(text) ? 0
-                : text.Split(new[]{'.','!','?'}, StringSplitOptions.RemoveEmptyEntries).Length;
-            reply = $"📊 Sentence count: <strong>{c:N0}</strong> sentences";
-        }
-        else if (lower.Contains("character"))
-            reply = $"📊 Character count: <strong>{text?.Length ?? 0:N0}</strong> characters";
-        else
-            reply = "I can answer word count, sentence count, and character count for free. For other questions I'll use the AI engine.";
+        var text = await JSRuntime.InvokeAsync<string>("getDocumentText"); var lower = query.ToLower(); string reply;
+        if (lower.Contains("word")) { var c = string.IsNullOrWhiteSpace(text) ? 0 : text.Split(new[]{' ','\n','\r','\t'}, StringSplitOptions.RemoveEmptyEntries).Length; reply = $"📊 Word count: <strong>{c:N0}</strong> words"; }
+        else if (lower.Contains("sentence")) { var c = string.IsNullOrWhiteSpace(text) ? 0 : text.Split(new[]{'.','!','?'}, StringSplitOptions.RemoveEmptyEntries).Length; reply = $"📊 Sentence count: <strong>{c:N0}</strong> sentences"; }
+        else if (lower.Contains("character")) reply = $"📊 Character count: <strong>{text?.Length ?? 0:N0}</strong> characters";
+        else reply = "I can answer word count, sentence count, and character count for free. For other questions I'll use the AI engine.";
         AddMessage("assistant", reply, null);
     }
 
@@ -1031,10 +1186,7 @@
         try
         {
             var response = await Http.PostAsJsonAsync("api/ai/chat", new { Prompt = prompt });
-            if (!response.IsSuccessStatusCode)
-            {
-                AddMessage("assistant", $"❌ AI error: {await response.Content.ReadAsStringAsync()}", null); return;
-            }
+            if (!response.IsSuccessStatusCode) { AddMessage("assistant", $"❌ AI error: {await response.Content.ReadAsStringAsync()}", null); return; }
             var aiText = (await response.Content.ReadAsStringAsync()).Trim('"').Replace("\\n","\n").Replace("\\r","");
             AddMessage("assistant", FormatAsHtml(aiText), extractApplicable ? ExtractImprovedText(aiText) : null);
         }
@@ -1042,163 +1194,59 @@
         finally { _chatLoading = false; StateHasChanged(); await ScrollChatToBottom(); }
     }
 
-    private async Task ApplySuggestion(string text)
-    {
-        await JSRuntime.InvokeVoidAsync("replaceSelectedText", text);
-        SetStatus("AI suggestion applied.", false);
-        AddMessage("assistant", "✅ Applied to document.", null);
-    }
+    private async Task ApplySuggestion(string text) { await JSRuntime.InvokeVoidAsync("replaceSelectedText", text); SetStatus("AI suggestion applied.", false); AddMessage("assistant", "✅ Applied to document.", null); }
 
-    // ════════════════════════════════════════════════════════════════════════
-    // NAVIGATION PANE
-    // ════════════════════════════════════════════════════════════════════════
-    private async Task ToggleNavigationPane()
-    {
-        _navPaneOpen = !_navPaneOpen;
-        await JSRuntime.InvokeVoidAsync("toggleNavigationPane", _navPaneOpen);
-        StateHasChanged();
-    }
+    private async Task ToggleNavigationPane() { _navPaneOpen = !_navPaneOpen; await JSRuntime.InvokeVoidAsync("toggleNavigationPane", _navPaneOpen); StateHasChanged(); }
 
-    // ════════════════════════════════════════════════════════════════════════
-    // TRACK CHANGES
-    // ════════════════════════════════════════════════════════════════════════
-    private async Task ToggleTrackChanges()
-    {
-        var enabled = await JSRuntime.InvokeAsync<bool>("toggleTrackChanges");
-        _trackChangesEnabled = enabled;
-        SetStatus(enabled ? "✍ Track Changes ON" : "✍ Track Changes OFF", false);
-    }
+    private async Task ToggleTrackChanges() { var enabled = await JSRuntime.InvokeAsync<bool>("toggleTrackChanges"); _trackChangesEnabled = enabled; SetStatus(enabled ? "✍ Track Changes ON" : "✍ Track Changes OFF", false); }
     private async Task AcceptAllChanges() { await JSRuntime.InvokeVoidAsync("acceptAllChanges"); SetStatus("✔ All changes accepted.", false); }
     private async Task RejectAllChanges() { await JSRuntime.InvokeVoidAsync("rejectAllChanges"); SetStatus("✖ All changes rejected.", false); }
 
-    // ════════════════════════════════════════════════════════════════════════
-    // TAB MANAGEMENT
-    // ════════════════════════════════════════════════════════════════════════
     private async Task NewTab()
     {
         var current = ActiveTab;
-        if (current != null)
-        {
-            var s = await JSRuntime.InvokeAsync<string>("getDocumentContent");
-            if (!string.IsNullOrEmpty(s)) { current.Sfdt = s; current.IsEmpty = false; current.IsModified = true; }
-            await JSRuntime.InvokeVoidAsync("autoSaveNow", current.Id.ToString(), current.FileName);
-        }
-        var tab = new DocTab { FileName = "Untitled.docx", IsEmpty = true };
-        _tabs.Add(tab); _activeTabId = tab.Id;
-        await JSRuntime.InvokeVoidAsync("loadBlankDocument");
-        await StartAutoSaveForActiveTab();
-        StateHasChanged();
+        if (current != null) { var s = await JSRuntime.InvokeAsync<string>("getDocumentContent"); if (!string.IsNullOrEmpty(s)) { current.Sfdt = s; current.IsEmpty = false; current.IsModified = true; } await JSRuntime.InvokeVoidAsync("autoSaveNow", current.Id.ToString(), current.FileName); }
+        var tab = new DocTab { FileName = "Untitled.docx", IsEmpty = true }; _tabs.Add(tab); _activeTabId = tab.Id;
+        // New tab has no file handle — Save will trigger Save As
+        await JSRuntime.InvokeVoidAsync("loadBlankDocument"); await StartAutoSaveForActiveTab(); StateHasChanged();
     }
 
-    private async Task StartRename(DocTab tab)
-    {
-        _renamingTabId = tab.Id; _renameValue = tab.TabLabel;
-        StateHasChanged(); await Task.Delay(50);
-        try { await _renameInputRef.FocusAsync(); } catch { }
-    }
-
-    private void CommitRename()
-    {
-        var tab = _tabs.FirstOrDefault(t => t.Id == _renamingTabId);
-        if (tab != null && !string.IsNullOrWhiteSpace(_renameValue))
-        {
-            var ext = System.IO.Path.GetExtension(tab.FileName);
-            tab.FileName = _renameValue.Trim() + (string.IsNullOrEmpty(ext) ? ".docx" : ext);
-        }
-        _renamingTabId = Guid.Empty; StateHasChanged();
-    }
-
-    private void HandleRenameKey(KeyboardEventArgs e)
-    {
-        if (e.Key == "Enter")  CommitRename();
-        if (e.Key == "Escape") { _renamingTabId = Guid.Empty; StateHasChanged(); }
-    }
+    private async Task StartRename(DocTab tab) { _renamingTabId = tab.Id; _renameValue = tab.TabLabel; StateHasChanged(); await Task.Delay(50); try { await _renameInputRef.FocusAsync(); } catch { } }
+    private void CommitRename() { var tab = _tabs.FirstOrDefault(t => t.Id == _renamingTabId); if (tab != null && !string.IsNullOrWhiteSpace(_renameValue)) { var ext = System.IO.Path.GetExtension(tab.FileName); tab.FileName = _renameValue.Trim() + (string.IsNullOrEmpty(ext) ? ".docx" : ext); } _renamingTabId = Guid.Empty; StateHasChanged(); }
+    private void HandleRenameKey(KeyboardEventArgs e) { if (e.Key == "Enter") CommitRename(); if (e.Key == "Escape") { _renamingTabId = Guid.Empty; StateHasChanged(); } }
 
     private async Task SwitchTab(Guid tabId)
     {
         if (tabId == _activeTabId) return;
-        var currentTab = ActiveTab;
-        var nextTab    = _tabs.FirstOrDefault(t => t.Id == tabId);
-        if (nextTab == null) return;
-        if (currentTab != null)
-            await JSRuntime.InvokeVoidAsync("autoSaveNow", currentTab.Id.ToString(), currentTab.FileName);
+        var currentTab = ActiveTab; var nextTab = _tabs.FirstOrDefault(t => t.Id == tabId); if (nextTab == null) return;
+        if (currentTab != null) await JSRuntime.InvokeVoidAsync("autoSaveNow", currentTab.Id.ToString(), currentTab.FileName);
         bool nextIsBlank = string.IsNullOrEmpty(nextTab.Sfdt);
-        var oldSfdt = await JSRuntime.InvokeAsync<string>("saveAndSwitch",
-            nextIsBlank ? null : nextTab.Sfdt, nextIsBlank);
+        var oldSfdt = await JSRuntime.InvokeAsync<string>("saveAndSwitch", nextIsBlank ? null : nextTab.Sfdt, nextIsBlank);
         if (currentTab != null && !string.IsNullOrEmpty(oldSfdt)) { currentTab.Sfdt = oldSfdt; currentTab.IsEmpty = false; }
-        _activeTabId = tabId;
-        await StartAutoSaveForActiveTab();
-        StateHasChanged();
+        _activeTabId = tabId; await StartAutoSaveForActiveTab(); StateHasChanged();
     }
 
     private async Task CloseTab(Guid tabId)
     {
-        var tab = _tabs.FirstOrDefault(t => t.Id == tabId);
-        if (tab == null) return;
+        var tab = _tabs.FirstOrDefault(t => t.Id == tabId); if (tab == null) return;
         await JSRuntime.InvokeVoidAsync("clearAutoSaveDraft", tab.Id.ToString());
-        if (_tabs.Count == 1)
-        {
-            tab.FileName = "Untitled.docx"; tab.Sfdt = string.Empty;
-            tab.IsModified = false; tab.IsEmpty = true;
-            await JSRuntime.InvokeVoidAsync("loadBlankDocument");
-            await StartAutoSaveForActiveTab(); StateHasChanged(); return;
-        }
+        await JSRuntime.InvokeVoidAsync("clearFileHandle", tab.Id.ToString());
+        if (_tabs.Count == 1) { tab.FileName = "Untitled.docx"; tab.Sfdt = string.Empty; tab.IsModified = false; tab.IsEmpty = true; await JSRuntime.InvokeVoidAsync("loadBlankDocument"); await StartAutoSaveForActiveTab(); StateHasChanged(); return; }
         var idx = _tabs.IndexOf(tab); _tabs.Remove(tab);
         var next = _tabs[Math.Min(idx, _tabs.Count - 1)]; _activeTabId = next.Id;
-        await JSRuntime.InvokeVoidAsync(next.IsEmpty ? "loadBlankDocument" : "loadDocument",
-            next.IsEmpty ? null! : (object)next.Sfdt);
+        await JSRuntime.InvokeVoidAsync(next.IsEmpty ? "loadBlankDocument" : "loadDocument", next.IsEmpty ? null! : (object)next.Sfdt);
         await StartAutoSaveForActiveTab(); StateHasChanged();
     }
 
-    private async Task SaveCurrentTabSfdt()
-    {
-        var current = ActiveTab;
-        if (current == null || current.IsEmpty) return;
-        var sfdt = await JSRuntime.InvokeAsync<string>("getDocumentContent");
-        if (!string.IsNullOrEmpty(sfdt)) { current.Sfdt = sfdt; current.IsModified = true; }
-    }
+    private async Task SaveCurrentTabSfdt() { var current = ActiveTab; if (current == null || current.IsEmpty) return; var sfdt = await JSRuntime.InvokeAsync<string>("getDocumentContent"); if (!string.IsNullOrEmpty(sfdt)) { current.Sfdt = sfdt; current.IsModified = true; } }
 
-    // ════════════════════════════════════════════════════════════════════════
-    // HELPERS
-    // ════════════════════════════════════════════════════════════════════════
-    private void AddMessage(string role, string html, string? applicable)
-    {
-        _chatMessages.Add(new ChatMessage(role, html, applicable)); StateHasChanged();
-    }
-    private async Task ScrollChatToBottom()
-    {
-        await Task.Delay(80);
-        try { await JSRuntime.InvokeVoidAsync("eval","var el=document.getElementById('chatMessages');if(el)el.scrollTop=el.scrollHeight;"); } catch { }
-    }
+    private void AddMessage(string role, string html, string? applicable) { _chatMessages.Add(new ChatMessage(role, html, applicable)); StateHasChanged(); }
+    private async Task ScrollChatToBottom() { await Task.Delay(80); try { await JSRuntime.InvokeVoidAsync("eval","var el=document.getElementById('chatMessages');if(el)el.scrollTop=el.scrollHeight;"); } catch { } }
     private static string Truncate(string s, int max) => s.Length <= max ? s : s[..max] + "…";
-    private static string TrimToWordLimit(string text, int maxWords)
-    {
-        var w = text.Split(' ');
-        return w.Length <= maxWords ? text : string.Join(' ', w[..maxWords]);
-    }
-    private static string FormatAsHtml(string text)
-    {
-        var html = System.Web.HttpUtility.HtmlEncode(text);
-        html = System.Text.RegularExpressions.Regex.Replace(html, @"\*\*(.+?)\*\*", "<strong>$1</strong>");
-        html = System.Text.RegularExpressions.Regex.Replace(html, @"\*(.+?)\*",     "<em>$1</em>");
-        return html.Replace("\n","<br/>");
-    }
-    private static string? ExtractImprovedText(string r)
-    {
-        foreach (var p in new[]{"improved version:","revised version:","copyedited version:","here is the"})
-        {
-            var idx = r.ToLower().IndexOf(p);
-            if (idx < 0) continue;
-            var after = r[(idx + p.Length)..].Trim().TrimStart('\n','\r',':').Trim();
-            var end   = after.IndexOf('\n');
-            return end > 0 ? after[..end].Trim() : after.Trim();
-        }
-        return null;
-    }
-    private void SetStatus(string msg, bool isError)
-    {
-        _statusMessage = msg; _statusClass = isError ? "n-status-error" : "n-status-ok"; StateHasChanged();
-    }
+    private static string TrimToWordLimit(string text, int maxWords) { var w = text.Split(' '); return w.Length <= maxWords ? text : string.Join(' ', w[..maxWords]); }
+    private static string FormatAsHtml(string text) { var html = System.Web.HttpUtility.HtmlEncode(text); html = System.Text.RegularExpressions.Regex.Replace(html, @"\*\*(.+?)\*\*", "<strong>$1</strong>"); html = System.Text.RegularExpressions.Regex.Replace(html, @"\*(.+?)\*", "<em>$1</em>"); return html.Replace("\n","<br/>"); }
+    private static string? ExtractImprovedText(string r) { foreach (var p in new[]{"improved version:","revised version:","copyedited version:","here is the"}) { var idx = r.ToLower().IndexOf(p); if (idx < 0) continue; var after = r[(idx + p.Length)..].Trim().TrimStart('\n','\r',':').Trim(); var end = after.IndexOf('\n'); return end > 0 ? after[..end].Trim() : after.Trim(); } return null; }
+    private void SetStatus(string msg, bool isError) { _statusMessage = msg; _statusClass = isError ? "n-status-error" : "n-status-ok"; StateHasChanged(); }
     private async Task PreviewSuggestion(ChatMessage msg)
     {
         var original = await JSRuntime.InvokeAsync<string>("getSelectedText");
@@ -1206,53 +1254,16 @@
         var html = $"<div style='margin-bottom:8px;'><strong>Original:</strong><br/><span style='color:#D44C47'>{System.Web.HttpUtility.HtmlEncode(original)}</span></div>"
                  + $"<div style='margin-bottom:8px;'><strong>AI Suggestion:</strong><br/><span style='color:#0F7B6C'>{System.Web.HttpUtility.HtmlEncode(msg.ApplicableText!)}</span></div>"
                  + "<div style='font-size:.73rem;color:#787774;'>Click <strong>Apply</strong> below to insert as tracked change.</div>";
-        AddMessage("assistant", html, msg.ApplicableText);
-        await ScrollChatToBottom();
+        AddMessage("assistant", html, msg.ApplicableText); await ScrollChatToBottom();
     }
 
-    // ════════════════════════════════════════════════════════════════════════
-    // MODELS
-    // ════════════════════════════════════════════════════════════════════════
     private record ChatMessage(string Role, string HtmlContent, string? ApplicableText);
     private record Snippet(string Icon, string Label, string Desc, string Body);
+    private class DocTab { public Guid Id { get; } = Guid.NewGuid(); public string FileName { get; set; } = "Untitled.docx"; public string Sfdt { get; set; } = string.Empty; public bool IsModified { get; set; } = false; public bool IsEmpty { get; set; } = false; public string TabLabel => string.IsNullOrEmpty(FileName) ? "Untitled" : System.IO.Path.GetFileNameWithoutExtension(FileName); public string DisplayName => FileName.Length > 18 ? FileName[..15] + "…" : FileName; }
+    private class RecoveryDraft { public string TabId { get; set; } = string.Empty; public string FileName { get; set; } = "Untitled.docx"; public string SavedAt { get; set; } = string.Empty; public string Sfdt { get; set; } = string.Empty; }
+    private class OutlineItem { public int Level { get; set; } public string Text { get; set; } = string.Empty; }
+    private class RecentFile { public string Name { get; set; } = string.Empty; public string OpenedAt { get; set; } = string.Empty; public string TimeLabel { get; set; } = string.Empty; }
+    private class RecentFileDto { public string Name { get; set; } = string.Empty; public string OpenedAt { get; set; } = string.Empty; }
 
-    private class DocTab
-    {
-        public Guid   Id         { get; } = Guid.NewGuid();
-        public string FileName   { get; set; } = "Untitled.docx";
-        public string Sfdt       { get; set; } = string.Empty;
-        public bool   IsModified { get; set; } = false;
-        public bool   IsEmpty    { get; set; } = false;
-        public string TabLabel   => string.IsNullOrEmpty(FileName) ? "Untitled" : System.IO.Path.GetFileNameWithoutExtension(FileName);
-        public string DisplayName => FileName.Length > 18 ? FileName[..15] + "…" : FileName;
-    }
-    private class RecoveryDraft
-    {
-        public string TabId    { get; set; } = string.Empty;
-        public string FileName { get; set; } = "Untitled.docx";
-        public string SavedAt  { get; set; } = string.Empty;
-        public string Sfdt     { get; set; } = string.Empty;
-    }
-    private class OutlineItem
-    {
-        public int    Level { get; set; }
-        public string Text  { get; set; } = string.Empty;
-    }
-    private class RecentFile
-    {
-        public string Name      { get; set; } = string.Empty;
-        public string OpenedAt  { get; set; } = string.Empty;
-        public string TimeLabel { get; set; } = string.Empty;
-    }
-    private class RecentFileDto
-    {
-        public string Name     { get; set; } = string.Empty;
-        public string OpenedAt { get; set; } = string.Empty;
-    }
-
-    public void Dispose()
-    {
-        JSRuntime.InvokeVoidAsync("stopAutoSave");
-        _selfRef?.Dispose();
-    }
+    public void Dispose() { JSRuntime.InvokeVoidAsync("stopAutoSave"); _selfRef?.Dispose(); }
 }
