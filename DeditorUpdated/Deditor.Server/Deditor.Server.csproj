@@ -11,6 +11,10 @@
     <PackageReference Include="Syncfusion.EJ2.WordEditor.AspNet.Core" Version="32.1.52" />
     <!-- Required for UseBlazorFrameworkFiles + UseWebAssemblyDebugging -->
     <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.Server" Version="10.0.1" />
+    <!-- Image conversion for metafiles (WMF/EMF) -->
+    <PackageReference Include="SkiaSharp" Version="2.88.9" />
+    <PackageReference Include="SkiaSharp.NativeAssets.Linux" Version="2.88.9" />
+    <PackageReference Include="System.Drawing.Common" Version="9.0.0" />
   </ItemGroup>
 
   <ItemGroup>

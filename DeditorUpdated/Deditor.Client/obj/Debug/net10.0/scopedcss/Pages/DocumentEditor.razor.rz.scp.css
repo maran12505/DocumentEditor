@@ -1,0 +1,20 @@
+.logo[b-oqcng0rme8] {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 600;
+    font-size: 16px;
+}
+
+.logo-img[b-oqcng0rme8] {
+    width: 28px;
+    height: 28px;
+    object-fit: contain;
+    border-radius: 6px; /* optional modern look */
+}
+
+.logo-text[b-oqcng0rme8] {
+    font-size: 15px;
+    color: #2f2f2f;
+}
+

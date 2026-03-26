@@ -1,28 +1,47 @@
 using Microsoft.AspNetCore.ResponseCompression;
 
-// ═══════════════════════════════════════════════════════════════════════════════
-// Register Syncfusion license — MUST be the very first line, before anything else
-// This removes the "Created with a trial version" watermark from saved documents
-// ═══════════════════════════════════════════════════════════════════════════════
 Syncfusion.Licensing.SyncfusionLicenseProvider.RegisterLicense("ORg4AjUWIQA/Gnt3VVhhQlJDfV5AQmBIYVp/TGpJfl96cVxMZVVBJAtUQF1hTH5bdE1jUH9ddX1VQWhbWkdy");
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.AddControllersWithViews();
-builder.Services.AddHttpClient();   // for IHttpClientFactory in AiController
-builder.Services.AddResponseCompression(opts =>
+builder.WebHost.ConfigureKestrel(options =>
 {
-    opts.MimeTypes = ResponseCompressionDefaults.MimeTypes.Concat(
-        new[] { "application/octet-stream" });
+    options.Limits.MaxRequestBodySize = 209_715_200;
+    options.Limits.KeepAliveTimeout = TimeSpan.FromMinutes(5);
+    options.Limits.RequestHeadersTimeout = TimeSpan.FromMinutes(5);
 });
 
-// Allow large uploads (manuscripts, books)
+builder.Services.AddControllersWithViews();
+builder.Services.AddHttpClient();
+
+// Enable gzip + brotli compression for ALL text responses (critical for SFDT)
+builder.Services.AddResponseCompression(opts =>
+{
+    opts.EnableForHttps = true;
+    opts.Providers.Add<BrotliCompressionProvider>();
+    opts.Providers.Add<GzipCompressionProvider>();
+    opts.MimeTypes = ResponseCompressionDefaults.MimeTypes.Concat(new[]
+    {
+        "application/json",
+        "text/plain",
+        "application/octet-stream"
+    });
+});
+
+builder.Services.Configure<BrotliCompressionProviderOptions>(opts =>
+{
+    opts.Level = System.IO.Compression.CompressionLevel.Fastest;
+});
+
 builder.Services.Configure<Microsoft.AspNetCore.Http.Features.FormOptions>(options =>
 {
-    options.MultipartBodyLengthLimit = 104857600; // 100 MB
+    options.MultipartBodyLengthLimit = 209_715_200;
 });
 
 var app = builder.Build();
+
+// Response compression MUST be before static files and routing
+app.UseResponseCompression();
 
 if (app.Environment.IsDevelopment())
     app.UseWebAssemblyDebugging();

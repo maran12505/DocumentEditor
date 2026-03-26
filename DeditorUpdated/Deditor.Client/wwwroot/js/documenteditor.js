@@ -10,6 +10,168 @@ function safeResize(attemptsLeft) {
     requestAnimationFrame(function () { setTimeout(function () { safeResize(attemptsLeft - 1); }, 50); });
 }
 
+// ══════════════════════════════════════════════════════════════════════════════
+// INDEXEDDB — Tab SFDT Storage (keeps large SFDT out of Blazor/.NET memory)
+// ══════════════════════════════════════════════════════════════════════════════
+// ══════════════════════════════════════════════════════════════════════════════
+// INDEXEDDB — Tab SFDT Storage (with full diagnostics)
+// ══════════════════════════════════════════════════════════════════════════════
+var _tabDb = null;
+var _tabDbReady = new Promise(function (resolve) {
+    var req = indexedDB.open('deditor-tabs', 1);
+    req.onupgradeneeded = function (e) {
+        console.log('[TabDB] Creating object store...');
+        e.target.result.createObjectStore('tabs');
+    };
+    req.onsuccess = function (e) {
+        _tabDb = e.target.result;
+        console.log('[TabDB] IndexedDB ready');
+        resolve();
+    };
+    req.onerror = function (e) {
+        console.error('[TabDB] IndexedDB init FAILED:', e);
+        resolve();
+    };
+});
+
+// Save SFDT to IndexedDB
+window.tabDbSave = async function (tabId, sfdt) {
+    await _tabDbReady;
+    if (!_tabDb) { console.error('[TabDB] save: DB not ready!'); return false; }
+    if (!tabId) { console.error('[TabDB] save: no tabId!'); return false; }
+    if (!sfdt) { console.error('[TabDB] save: no sfdt data!'); return false; }
+    console.log('[TabDB] SAVE tabId=' + tabId.substring(0, 8) + '... size=' + Math.round(sfdt.length / 1024) + 'KB');
+    return new Promise(function (resolve) {
+        try {
+            var tx = _tabDb.transaction('tabs', 'readwrite');
+            tx.objectStore('tabs').put(sfdt, tabId);
+            tx.oncomplete = function () {
+                console.log('[TabDB] SAVE OK: ' + tabId.substring(0, 8));
+                resolve(true);
+            };
+            tx.onerror = function (e) {
+                console.error('[TabDB] SAVE FAILED:', e);
+                resolve(false);
+            };
+        } catch (e) { console.error('[TabDB] save exception:', e); resolve(false); }
+    });
+};
+
+// Load SFDT from IndexedDB
+window.tabDbLoad = async function (tabId) {
+    await _tabDbReady;
+    if (!_tabDb) { console.error('[TabDB] load: DB not ready!'); return null; }
+    if (!tabId) { console.error('[TabDB] load: no tabId!'); return null; }
+    console.log('[TabDB] LOAD tabId=' + tabId.substring(0, 8) + '...');
+    return new Promise(function (resolve) {
+        try {
+            var tx = _tabDb.transaction('tabs', 'readonly');
+            var req = tx.objectStore('tabs').get(tabId);
+            req.onsuccess = function () {
+                var data = req.result || null;
+                if (data) {
+                    console.log('[TabDB] LOAD OK: ' + tabId.substring(0, 8) + ' size=' + Math.round(data.length / 1024) + 'KB');
+                } else {
+                    console.warn('[TabDB] LOAD EMPTY: ' + tabId.substring(0, 8) + ' — no data found!');
+                }
+                resolve(data);
+            };
+            req.onerror = function (e) {
+                console.error('[TabDB] LOAD FAILED:', e);
+                resolve(null);
+            };
+        } catch (e) { console.error('[TabDB] load exception:', e); resolve(null); }
+    });
+};
+
+// Delete SFDT from IndexedDB
+window.tabDbDelete = async function (tabId) {
+    await _tabDbReady;
+    if (!_tabDb) return;
+    console.log('[TabDB] DELETE tabId=' + (tabId || '').substring(0, 8));
+    try {
+        var tx = _tabDb.transaction('tabs', 'readwrite');
+        tx.objectStore('tabs').delete(tabId);
+    } catch (e) { console.error('[TabDB] delete error:', e); }
+};
+
+// Check if tab has data in IndexedDB
+window.tabDbHas = async function (tabId) {
+    var data = await window.tabDbLoad(tabId);
+    return data != null && data.length > 0;
+};
+
+// Save current editor content to IndexedDB (serialize + store)
+window.saveCurrentEditorToDb = async function (tabId) {
+    if (!container || !tabId) {
+        console.warn('[TabDB] saveCurrentEditor: container=' + !!container + ' tabId=' + tabId);
+        return false;
+    }
+    console.log('[TabDB] Serializing editor for tab ' + tabId.substring(0, 8) + '...');
+    var sfdt = container.documentEditor.serialize();
+    if (!sfdt || sfdt.length < 10) {
+        console.warn('[TabDB] saveCurrentEditor: serialize returned empty/tiny (' + (sfdt ? sfdt.length : 0) + ' chars)');
+        return false;
+    }
+    console.log('[TabDB] Serialized: ' + Math.round(sfdt.length / 1024) + 'KB — saving to DB...');
+    return await window.tabDbSave(tabId, sfdt);
+};
+
+// Load tab from IndexedDB into editor
+window.loadTabFromDb = async function (tabId) {
+    console.log('[TabDB] loadTabFromDb: ' + tabId.substring(0, 8));
+    showLoader();
+    var sfdt = await window.tabDbLoad(tabId);
+    if (sfdt && sfdt.length > 10) {
+        console.log('[TabDB] Opening in editor: ' + Math.round(sfdt.length / 1024) + 'KB');
+        container.documentEditor.open(sfdt);
+        container.documentEditor.focusIn();
+        hideLoader();
+        return true;
+    }
+    console.warn('[TabDB] loadTabFromDb: NO DATA — opening blank');
+    hideLoader();
+    return false;
+};
+
+// Full tab switch: save current → load next
+window.switchTab = async function (currentTabId, nextTabId, nextIsEmpty) {
+    console.log('[TabDB] === SWITCH TAB ===');
+    showLoader();
+
+    // 1. Save current tab to IndexedDB
+    if (currentTabId && currentTabId !== '') {
+        await window.saveCurrentEditorToDb(currentTabId);
+    }
+
+    // 2. Try IndexedDB first — always (user may have typed in a "new" tab)
+    var sfdt = await window.tabDbLoad(nextTabId);
+    if (sfdt && sfdt.length > 0) {
+        console.log('[TabDB]   Loading from DB: ' + Math.round(sfdt.length / 1024) + 'KB');
+        // open() internally destroys the previous document — no openBlank() needed
+        container.documentEditor.open(sfdt);
+        sfdt = null;
+        container.documentEditor.focusIn();
+    } else {
+        console.log('[TabDB]   No saved content — blank');
+        container.documentEditor.openBlank();
+        container.documentEditor.focusIn();
+    }
+
+    setTimeout(function () {
+        try { container.resize(); } catch (e) {}
+        hideLoader();
+    }, 100);
+    console.log('[TabDB] === SWITCH COMPLETE ===');
+};
+
+// Save SFDT string directly to IndexedDB (used after server import)
+window.storeSfdtToDb = async function (tabId, sfdt) {
+    console.log('[TabDB] storeSfdtToDb: tabId=' + (tabId || '').substring(0, 8) + ' size=' + (sfdt ? Math.round(sfdt.length / 1024) + 'KB' : 'null'));
+    await window.tabDbSave(tabId, sfdt);
+};
+
+
 // ── Initialize Syncfusion Document Editor ─────────────────────────────────────
 window.initializeDocumentEditor = function () {
     container = new ej.documenteditor.DocumentEditorContainer({
@@ -19,9 +181,12 @@ window.initializeDocumentEditor = function () {
         toolbarMode: 'Ribbon',
         serviceUrl: '/api/documenteditor/',
     });
-    container.appendTo("#container1");
-    container.documentEditor.enableTrackChanges = true;
-    container.documentEditor.showRevisions = true;
+
+
+container.appendTo("#container1");
+    container.documentEditor.enableTrackChanges = false;
+    container.documentEditor.showRevisions = false;
+    container.documentEditor.enableOptimizedTextMeasuring = true;
     window._deContainer = container;
 
     safeResize(20);
@@ -67,7 +232,7 @@ function _interceptFileMenu() {
         if (text === 'New') {
             window._blazorEditorRef.invokeMethodAsync('NewTabFromJS');
         } else {
-            window._blazorEditorRef.invokeMethodAsync('OpenFileFromJS');
+            window._blazorEditorRef.invokeMethodAsync('OpenFileDirect');
         }
     }, true);
 }
@@ -85,7 +250,30 @@ function _disableSyncfusionSave() {
     };
 }
 
+function showLoader() {
+    // Try to overlay just the viewer container (canvas area)
+    var viewer = document.getElementById("container1_editor_viewerContainer");
+    if (viewer) {
+        var overlay = document.getElementById("editorLoader");
+        if (!overlay) {
+            overlay = document.createElement("div");
+            overlay.id = "editorLoader";
+            overlay.className = "editor-loader";
+            overlay.innerHTML = '<div class="global-spinner"></div>';
+            viewer.appendChild(overlay);
+        }
+        overlay.style.display = "flex";
+        return;
+    }
+    // Fallback to global loader if editor not mounted yet
+    document.getElementById("globalLoader").style.display = "flex";
+}
 
+function hideLoader() {
+    var el = document.getElementById("editorLoader");
+    if (el) el.style.display = "none";
+    document.getElementById("globalLoader").style.display = "none";
+}
 
 // ══════════════════════════════════════════════════════════════════════════════
 // FILE SYSTEM ACCESS API — Notepad-style Save / Save As
@@ -182,34 +370,31 @@ window.saveToExistingHandle = async function (tabId, base64) {
 
 // ── Save As with native file picker ──────────────────────────────────────────
 // Returns: chosen filename on success, "CANCELLED" if user cancelled, "ERROR:msg" on failure
-window.saveWithFilePicker = async function (tabId, base64, suggestedName, formatExt) {
+// ── Save As — Complete flow (picker opens FIRST to preserve user gesture) ────
+// Called from Blazor. Opens picker immediately, then serializes + saves.
+window.saveAsComplete = async function (tabId, suggestedName, formatExt, serverSaveUrl) {
     try {
         var mimeMap = {
             '.docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
             '.doc':  'application/msword',
             '.rtf':  'application/rtf',
-            '.txt':  'text/plain'
+            '.txt':  'text/plain',
+            '.xml':  'application/xml'
         };
         var descMap = {
             '.docx': 'Word Document',
             '.doc':  'Word 97-2003 Document',
             '.rtf':  'Rich Text Format',
-            '.txt':  'Plain Text'
+            '.txt':  'Plain Text',
+            '.xml':  'Word XML Document'
         };
 
         var ext  = formatExt || '.docx';
         var mime = mimeMap[ext] || mimeMap['.docx'];
         var desc = descMap[ext] || 'Document';
 
-        // Build file type filters — selected format first, then others
-        var types = [];
-        types.push({
-            description: desc,
-            accept: {}
-        });
+        var types = [{ description: desc, accept: {} }];
         types[0].accept[mime] = [ext];
-
-        // Add other formats as additional options
         Object.keys(mimeMap).forEach(function (e) {
             if (e !== ext) {
                 var t = { description: descMap[e], accept: {} };
@@ -218,71 +403,159 @@ window.saveWithFilePicker = async function (tabId, base64, suggestedName, format
             }
         });
 
+        // 1) Open picker IMMEDIATELY (user gesture is still valid)
         var handle = await window.showSaveFilePicker({
             suggestedName: suggestedName || 'Untitled.docx',
             types: types
         });
 
-        var bytes = Uint8Array.from(atob(base64), function (c) { return c.charCodeAt(0); });
+        // 2) Now serialize the document
+        var sfdt = container ? container.documentEditor.serialize() : null;
+        if (!sfdt) return 'ERROR:No document content';
+
+        // Determine final filename and extension from what user picked
+        var chosenName = handle.name || suggestedName;
+        var chosenExt  = chosenName.lastIndexOf('.') >= 0
+            ? chosenName.substring(chosenName.lastIndexOf('.'))
+            : ext;
+
+        // 3) POST to server to convert SFDT → binary
+        var resp = await fetch(serverSaveUrl || '/api/documenteditor/save', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ Content: sfdt, FileName: chosenName })
+        });
+
+        if (!resp.ok) return 'ERROR:Server save failed (' + resp.status + ')';
+
+        // 4) Write bytes to the file handle
+        var blob    = await resp.blob();
         var writable = await handle.createWritable();
-        await writable.write(bytes);
+        await writable.write(blob);
         await writable.close();
 
-        // Store handle for future "Save" calls
+        // 5) Store handle for future Save calls
         _fileHandles[tabId] = handle;
 
-        // Return the actual chosen filename
-        return handle.name || suggestedName;
+        return 'OK:' + chosenName;
     } catch (e) {
         if (e.name === 'AbortError') return 'CANCELLED';
-        console.error('[SaveAs] picker failed:', e);
+        console.error('[SaveAs] failed:', e);
         return 'ERROR:' + e.message;
     }
 };
 
 // ── Open file with native picker (returns handle for write-back) ──────────────
 // Returns: { fileName, base64 } on success, { error: "CANCELLED" } or { error: "msg" }
-window.openWithFilePicker = async function (tabId) {
+window.openAndUploadToServer = async function () {
     try {
-        var types = [
-            {
+        console.log("🚀 Open started");
+        const startTime = performance.now();
+
+        showLoader(); // ✅ START LOADING UI
+
+       var handles = await window.showOpenFilePicker({
+            multiple: false,
+            types: [{
                 description: 'Documents',
                 accept: {
                     'application/vnd.openxmlformats-officedocument.wordprocessingml.document': ['.docx'],
                     'application/msword': ['.doc'],
                     'application/rtf': ['.rtf'],
-                    'text/plain': ['.txt']
+                    'text/plain': ['.txt'],
+                    'application/json': ['.sfdt']
                 }
-            }
-        ];
-
-        var handles = await window.showOpenFilePicker({
-            multiple: false,
-            types: types
+            }]
         });
 
-        if (!handles || handles.length === 0) return { error: 'CANCELLED' };
-
-        var handle = handles[0];
-        var file = await handle.getFile();
-
-        // Read file as base64
-        var arrayBuffer = await file.arrayBuffer();
-        var bytes = new Uint8Array(arrayBuffer);
-        var binary = '';
-        for (var i = 0; i < bytes.length; i++) {
-            binary += String.fromCharCode(bytes[i]);
+        if (!handles || handles.length === 0) {
+            hideLoader();
+            return;
         }
-        var base64 = btoa(binary);
 
-        // Store the handle so Save can write back to this file
-        _fileHandles[tabId] = handle;
+        console.log("📂 File selected");
 
-        return { fileName: file.name, base64: base64 };
+      var file = await handles[0].getFile();
+        var fileName = file.name || '';
+        var fileExt = fileName.lastIndexOf('.') >= 0 ? fileName.substring(fileName.lastIndexOf('.')).toLowerCase() : '';
+
+        // Validate file format
+        var supportedFormats = ['.docx', '.doc', '.rtf', '.txt', '.sfdt', '.xml'];
+        if (!supportedFormats.includes(fileExt)) {
+            hideLoader();
+            alert('Unsupported file format: "' + fileExt + '"\n\nSupported formats:\n• .docx (Word Document)\n• .doc (Word 97-2003)\n• .rtf (Rich Text Format)\n• .txt (Plain Text)\n• .sfdt (Syncfusion Document)');
+            return;
+        }
+
+        var sfdt;
+
+        // SFDT files are already in Syncfusion's native format — load directly
+        if (fileExt === '.sfdt') {
+            console.log("⚡ SFDT file — loading directly (no server round-trip)");
+            sfdt = await file.text();
+        } else {
+            var formData = new FormData();
+            formData.append("files", file);
+
+            console.log("⬆ Uploading to server...");
+            const uploadStart = performance.now();
+
+            const response = await fetch('/api/documenteditor/import', {
+                method: 'POST',
+                body: formData
+            });
+
+            const uploadEnd = performance.now();
+            console.log(`✅ Server response received in ${(uploadEnd - uploadStart).toFixed(2)} ms`);
+
+if (!response.ok) {
+                var errText = await response.text();
+                console.error("❌ Server error:", errText);
+                hideLoader();
+                // Show user-friendly message for large files
+                if (errText.indexOf('too large') >= 0 || errText.indexOf('File too large') >= 0) {
+                    alert('This file is too large to open.\n\nMaximum supported file size is 100MB.\nTry splitting the document into smaller parts.');
+                }
+                return;
+            }
+
+            sfdt = await response.text();
+        }
+
+        console.log("🧠 Rendering document...");
+        const renderStart = performance.now();
+
+        window.loadDocument(sfdt);
+
+        // Store SFDT to IndexedDB so tab switching works
+        var btnSaveAs = document.getElementById('btnSaveAs');
+        var tabId = btnSaveAs ? btnSaveAs.getAttribute('data-tab-id') : '';
+        if (tabId && sfdt && sfdt.length > 10) {
+            await window.storeSfdtToDb(tabId, sfdt);
+            console.log('[Open] Stored to IndexedDB: tab=' + tabId.substring(0, 8) + ' size=' + Math.round(sfdt.length / 1024) + 'KB');
+        }
+
+        // Notify Blazor to update tab state (IsEmpty = false, FileName)
+        if (window._blazorEditorRef && file) {
+            try {
+                await window._blazorEditorRef.invokeMethodAsync('OnFileOpenedFromJS', file.name || 'document.docx');
+            } catch (e) { console.warn('[Open] Blazor notify failed:', e); }
+        }
+
+        setTimeout(() => {
+            const endTime = performance.now();
+            console.log("🎉 Document fully loaded");
+            console.log(`⏱ TOTAL TIME: ${(endTime - startTime).toFixed(2)} ms`);
+            hideLoader();
+        }, 300);
+
     } catch (e) {
-        if (e.name === 'AbortError') return { error: 'CANCELLED' };
-        console.error('[Open] picker failed:', e);
-        return { error: e.message };
+        hideLoader();
+        if (e.name === 'AbortError') {
+            console.log('[Open] User cancelled file picker');
+            return;
+        }
+        console.error("❌ Upload failed:", e);
     }
 };
 
@@ -366,12 +639,19 @@ window.loadBlankDocument = function () {
 };
 window.loadDocument = function (sfdt) {
     if (!container) return;
+    console.log('[Render] Opening document (' + Math.round((sfdt || '').length / 1024) + 'KB)...');
+    var start = performance.now();
     container.documentEditor.open(sfdt);
+    console.log('[Render] open() took ' + (performance.now() - start).toFixed(0) + 'ms');
     container.documentEditor.focusIn();
 };
 window.getDocumentContent = function () {
     if (!container) return null;
-    return container.documentEditor.serialize();
+    console.log('[Save] Serializing document...');
+    var start = performance.now();
+    var result = container.documentEditor.serialize();
+    console.log('[Save] Serialized in ' + (performance.now() - start).toFixed(0) + 'ms (' + Math.round((result || '').length / 1024) + 'KB)');
+    return result;
 };
 window.saveAndSwitch = function (newSfdt, isBlank) {
     if (!container) { console.error('saveAndSwitch: container null'); return null; }
@@ -575,11 +855,7 @@ var _autoSaveTimer    = null;
 var _lastSavedSfdt    = '';
 
 window.startAutoSave = function (tabId, fileName) {
-    clearInterval(_autoSaveTimer);
-    _lastSavedSfdt = '';
-    _autoSaveTimer = setInterval(function () {
-        window.autoSaveNow(tabId, fileName);
-    }, AUTOSAVE_INTERVAL);
+    // AutoSave disabled
 };
 
 window.stopAutoSave = function () {
@@ -592,6 +868,10 @@ window.autoSaveNow = function (tabId, fileName) {
     try {
         var sfdt = container.documentEditor.serialize();
         if (!sfdt || sfdt === _lastSavedSfdt) return false;
+        if (sfdt.length > 4 * 1024 * 1024) {
+            console.log('[AutoSave] Skipped — doc too large (' + Math.round(sfdt.length / 1024 / 1024) + 'MB)');
+            return false;
+        }
         var entry = JSON.stringify({ sfdt: sfdt, fileName: fileName || 'Untitled.docx', savedAt: new Date().toISOString() });
         localStorage.setItem('deditor-autosave-v1:' + tabId, entry);
         _lastSavedSfdt = sfdt;
@@ -690,6 +970,93 @@ window.insertSnippetText = function (body) {
 // ══════════════════════════════════════════════════════════════════════════════
 // KEYBOARD LISTENERS
 // ══════════════════════════════════════════════════════════════════════════════
+// ══════════════════════════════════════════════════════════════════════════════
+// SAVE AS — runs entirely in JS to preserve user gesture for file picker
+// ══════════════════════════════════════════════════════════════════════════════
+function _doSaveAs() {
+    var btn = document.getElementById('btnSaveAs');
+    var tabId     = btn ? btn.getAttribute('data-tab-id') : '';
+    var fileName  = btn ? btn.getAttribute('data-filename') : 'Untitled.docx';
+    var ext       = '.docx';
+    if (fileName) {
+        var dotIdx = fileName.lastIndexOf('.');
+        if (dotIdx >= 0) ext = fileName.substring(dotIdx).toLowerCase();
+    }
+    if (ext !== '.docx' && ext !== '.doc' && ext !== '.rtf' && ext !== '.txt' && ext !== '.xml') ext = '.docx';
+
+    var mimeMap = {
+        '.docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        '.doc':  'application/msword',
+        '.rtf':  'application/rtf',
+        '.txt':  'text/plain',
+        '.xml':  'application/xml'
+    };
+    var descMap = {
+        '.docx': 'Word Document', '.doc': 'Word 97-2003 Document',
+        '.rtf': 'Rich Text Format', '.txt': 'Plain Text', '.xml': 'Word XML Document'
+    };
+
+    var types = [{ description: descMap[ext] || 'Document', accept: {} }];
+    types[0].accept[mimeMap[ext] || mimeMap['.docx']] = [ext];
+    Object.keys(mimeMap).forEach(function (e) {
+        if (e !== ext) { var t = { description: descMap[e], accept: {} }; t.accept[mimeMap[e]] = [e]; types.push(t); }
+    });
+
+    // 1) Open picker IMMEDIATELY (user gesture still valid)
+    window.showSaveFilePicker({
+        suggestedName: fileName || 'Untitled.docx',
+        types: types
+    }).then(function (handle) {
+        // 2) Serialize
+        var sfdt = container ? container.documentEditor.serialize() : null;
+        if (!sfdt) { _notifyBlazorSaveAs('ERROR:No document content'); return; }
+        var chosenName = handle.name || fileName;
+
+        // 3) POST to server
+        return fetch('/api/documenteditor/save', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ Content: sfdt, FileName: chosenName })
+        }).then(function (resp) {
+            if (!resp.ok) throw new Error('Server returned ' + resp.status);
+            return resp.blob();
+        }).then(function (blob) {
+            // 4) Write to file
+            return handle.createWritable().then(function (w) {
+                return w.write(blob).then(function () { return w.close(); });
+            }).then(function () {
+                _fileHandles[tabId] = handle;
+                _notifyBlazorSaveAs('OK:' + chosenName);
+            });
+        });
+    }).catch(function (e) {
+        if (e.name === 'AbortError') { _notifyBlazorSaveAs('CANCELLED'); return; }
+        console.error('[SaveAs]', e);
+        _notifyBlazorSaveAs('ERROR:' + e.message);
+    });
+}
+
+function _notifyBlazorSaveAs(result) {
+    if (window._blazorEditorRef) {
+        try { window._blazorEditorRef.invokeMethodAsync('OnSaveAsCompleted', result); } catch (e) {}
+    }
+}
+
+// Intercept Save As button clicks — must happen at DOM level to preserve gesture
+document.addEventListener('click', function (e) {
+    var btn = e.target.closest('#btnSaveAs');
+    if (!btn) return;
+    e.preventDefault();
+    e.stopImmediatePropagation();
+    if (typeof window.showSaveFilePicker !== 'function') {
+        // Fallback — let Blazor handle via download
+        if (window._blazorEditorRef) {
+            try { window._blazorEditorRef.invokeMethodAsync('OnSaveShortcut'); } catch (err) {}
+        }
+        return;
+    }
+    _doSaveAs();
+}, true); // capture phase — fires before Blazor
 window.registerEditorKeyListeners = function (dotNetRef) {
     window._blazorEditorRef = dotNetRef;
 
@@ -706,10 +1073,10 @@ window.registerEditorKeyListeners = function (dotNetRef) {
             try { dotNetRef.invokeMethodAsync('OnSaveShortcut'); } catch (err) {}
             return;
         }
-        if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's' && e.shiftKey) {
+if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's' && e.shiftKey) {
             e.preventDefault();
             e.stopPropagation();
-            try { dotNetRef.invokeMethodAsync('OnSaveAsShortcut'); } catch (err) {}
+            _doSaveAs();
             return;
         }
     }, true);

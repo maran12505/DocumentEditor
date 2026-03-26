@@ -8,6 +8,7 @@
 
     <!-- Syncfusion styles -->
     <link href="https://cdn.syncfusion.com/ej2/32.1.25/material.css" rel="stylesheet" />
+    
 
     <!-- App styles -->
     <link href="css/app.css" rel="stylesheet" />
@@ -15,6 +16,7 @@
     <link href="css/selectiontoolbar.css" rel="stylesheet" />
     <link href="css/Navigation.css" rel="stylesheet" />
     <link href="css/Ribbontabs.css" rel="stylesheet" />
+    <link rel="icon" href="data:," />
 </head>
 <body>
     <div id="app">
@@ -31,14 +33,43 @@
         <a class="dismiss">🗙</a>
     </div>
 
+    <div id="globalLoader" style="
+    position:fixed;top:0;left:0;width:100%;height:100%;
+    background:rgba(0,0,0,.35);display:none;align-items:center;justify-content:center;z-index:9999;
+">
+    <div>
+        <div class="global-spinner"></div>
+        <div id="loaderText" style="
+            font-size:14px;font-weight:600;color:#fff;font-family:'Segoe UI',system-ui,sans-serif;
+            margin-top:16px;text-align:center;
+        "></div>
+    </div>
+</div>
+
+<style>
+            .global-spinner {
+            width: 36px;
+            height: 36px;
+            margin: 0 auto;
+            border: 3px solid #E8E5E0;
+            border-top-color: #2383E2;
+            border-radius: 50%;
+            animation: spinRotate .8s linear infinite;
+        }
+        @keyframes spinRotate {
+            to { transform: rotate(360deg); }
+        }
+</style>
+</div>
+
     <!-- Syncfusion EJ2 Document Editor bundle (CDN) -->
     <script src="https://cdn.syncfusion.com/ej2/32.1.25/dist/ej2.min.js"></script>
 
     <!-- compromise.js — free open-source NLP for Essential Caps (no API key needed) -->
-    <script src="https://unpkg.com/compromise@14.14.2/builds/compromise.js"></script>
+    <script src="js/compromise.js"></script>
 
     <!-- Our custom JS -->
-    <script src="js/documenteditor.js?v=4"></script>
+    <script src="js/documenteditor.js?v=7"></script>
     <script src="js/selectiontoolbar.js"></script>
 
      <!-- Search input keyboard handling — runs in capture phase before Syncfusion -->

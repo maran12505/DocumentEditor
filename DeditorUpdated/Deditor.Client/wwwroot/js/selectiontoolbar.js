@@ -89,7 +89,7 @@
     // ── Attach once the editor is ready ─────────────────────────────────────
     function attachToEditor() {
         // The viewer container is the scrollable canvas area
-        var canvas = document.getElementById('container1_editor_viewerContainer');
+        var canvas = document.querySelector('#editorArea > div:not([style*="display:none"]) [id$="_editor_viewerContainer"]') || document.querySelector('[id$="_editor_viewerContainer"]');
         if (!canvas || !window._deContainer) {
             setTimeout(attachToEditor, 500);
             return;
