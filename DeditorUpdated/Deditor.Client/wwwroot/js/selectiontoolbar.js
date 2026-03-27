@@ -1,8 +1,6 @@
 // ══════════════════════════════════════════════════════════════════════════════
-// FLOATING SELECTION TOOLBAR
-// Syncfusion Document Editor renders on a <canvas> — NOT an iframe.
-// We listen on the viewerContainer div for mouseup, then check Syncfusion's
-// own selection.text property. Toolbar shows above selected text.
+// FLOATING SELECTION TOOLBAR — Multi-Editor Compatible
+// Re-attaches listeners whenever the active editor changes.
 // ══════════════════════════════════════════════════════════════════════════════
 
 (function () {
@@ -10,6 +8,10 @@
     var _toolbar     = null;
     var _hideTimer   = null;
     var _showTimer   = null;
+    var _attachedCanvas = null;   // track which canvas we're currently bound to
+    var _mouseupHandler = null;
+    var _keydownHandler = null;
+    var _docMousedownHandler = null;
 
     // ── Build toolbar DOM (once) ────────────────────────────────────────────
     function createToolbar() {
@@ -34,7 +36,6 @@
         ].join('');
         document.body.appendChild(el);
 
-        // Prevent editor losing selection; stop event reaching global hide listener
         el.addEventListener('mousedown', function (e) {
             e.preventDefault();
             e.stopPropagation();
@@ -66,7 +67,7 @@
             var th = _toolbar.offsetHeight || 36;
             var left = Math.max(8, Math.min(x - tw / 2, window.innerWidth - tw - 8));
             var top  = y - th - 10;
-            if (top < 8) top = y + 14;          // flip below if near top edge
+            if (top < 8) top = y + 14;
             _toolbar.style.left = left + 'px';
             _toolbar.style.top  = top  + 'px';
         });
@@ -86,19 +87,57 @@
         if (_hideTimer) { clearTimeout(_hideTimer); _hideTimer = null; }
     }
 
-    // ── Attach once the editor is ready ─────────────────────────────────────
-    function attachToEditor() {
-        // The viewer container is the scrollable canvas area
-        var canvas = document.querySelector('#editorArea > div:not([style*="display:none"]) [id$="_editor_viewerContainer"]') || document.querySelector('[id$="_editor_viewerContainer"]');
-        if (!canvas || !window._deContainer) {
-            setTimeout(attachToEditor, 500);
+    // ── Detach old listeners ────────────────────────────────────────────────
+    function detachFromCanvas() {
+        if (_attachedCanvas) {
+            if (_mouseupHandler) _attachedCanvas.removeEventListener('mouseup', _mouseupHandler);
+            if (_keydownHandler) _attachedCanvas.removeEventListener('keydown', _keydownHandler);
+            _attachedCanvas = null;
+        }
+        if (_docMousedownHandler) {
+            document.removeEventListener('mousedown', _docMousedownHandler, true);
+            _docMousedownHandler = null;
+        }
+    }
+
+    // ── Attach to the currently active editor's canvas ──────────────────────
+    function attachToActiveEditor() {
+        if (!window._deContainer) {
+            setTimeout(attachToActiveEditor, 500);
             return;
         }
 
+        // Find the active editor's viewer container
+        var canvas = null;
+        if (typeof _activeEditorTabId !== 'undefined' && typeof _editors !== 'undefined' && _editors[_activeEditorTabId]) {
+            var divId = _editors[_activeEditorTabId].divId;
+            var editorDiv = document.getElementById(divId);
+            if (editorDiv) {
+                canvas = editorDiv.querySelector('[id$="_editor_viewerContainer"]');
+            }
+        }
+
+        // Fallback: find any visible viewer container
+        if (!canvas) {
+            canvas = document.querySelector('#editorArea > div:not([style*="display: none"]) [id$="_editor_viewerContainer"]')
+                  || document.querySelector('[id$="_editor_viewerContainer"]');
+        }
+
+        if (!canvas) {
+            setTimeout(attachToActiveEditor, 500);
+            return;
+        }
+
+        // Already attached to this exact canvas — skip
+        if (_attachedCanvas === canvas) return;
+
+        // Detach old, attach new
+        detachFromCanvas();
+        _attachedCanvas = canvas;
+
         var deEditor = window._deContainer.documentEditor;
 
-        // ── mouseup on the canvas: check selection after Syncfusion settles ──
-        canvas.addEventListener('mouseup', function (e) {
+        _mouseupHandler = function (e) {
             clearTimeout(_showTimer);
             _showTimer = setTimeout(function () {
                 var text = deEditor.selection ? deEditor.selection.text : '';
@@ -107,27 +146,26 @@
                 } else {
                     hideToolbar();
                 }
-            }, 80); // 80ms is enough for Syncfusion to update selection.text
-        });
+            }, 80);
+        };
 
-        // ── Global mousedown (capture): hide when clicking outside canvas ───
-        document.addEventListener('mousedown', function (e) {
-            if (!_toolbar || _toolbar.style.display === 'none') return;
-            // Toolbar itself — stopPropagation handles it
-            if (_toolbar.contains(e.target)) return;
-            // Click landed on the canvas → mouseup will decide
-            if (canvas.contains(e.target)) return;
-            // Anything else (ribbon, topbar, sidebar…) → hide immediately
-            hideToolbar();
-        }, true);
-
-        // ── Keyboard: hide when selection is cleared ─────────────────────────
-        canvas.addEventListener('keydown', function () {
+        _keydownHandler = function () {
             setTimeout(function () {
                 var text = deEditor.selection ? deEditor.selection.text : '';
                 if (!text || text.trim().length === 0) hideToolbar();
             }, 80);
-        });
+        };
+
+        _docMousedownHandler = function (e) {
+            if (!_toolbar || _toolbar.style.display === 'none') return;
+            if (_toolbar.contains(e.target)) return;
+            if (canvas.contains(e.target)) return;
+            hideToolbar();
+        };
+
+        canvas.addEventListener('mouseup', _mouseupHandler);
+        canvas.addEventListener('keydown', _keydownHandler);
+        document.addEventListener('mousedown', _docMousedownHandler, true);
     }
 
     // ── Action handler ──────────────────────────────────────────────────────
@@ -149,7 +187,6 @@
                 return;
         }
 
-        // Keep toolbar only if selection still exists after the action
         setTimeout(function () {
             var text = window._deContainer.documentEditor.selection
                        ? window._deContainer.documentEditor.selection.text : '';
@@ -159,9 +196,13 @@
 
     // ── Boot ────────────────────────────────────────────────────────────────
     window.addEventListener('load', function () {
-        setTimeout(attachToEditor, 1500);
+        setTimeout(attachToActiveEditor, 1500);
     });
 
-    window.initSelectionToolbar = function () { attachToEditor(); };
+    // Public API — called from documenteditor.js after tab switch
+    window.initSelectionToolbar = function () {
+        hideToolbar();
+        attachToActiveEditor();
+    };
 
 })();

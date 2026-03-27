@@ -509,7 +509,7 @@
     }
 
     <div class="n-editor-area">
-        <div id="container1"></div>
+        <div id="editorArea"></div>
     </div>
 
     @if (_chatOpen)
@@ -769,7 +769,7 @@ public async Task OpenFileDirect()
     {
         if (firstRender)
         {
-            await JSRuntime.InvokeVoidAsync("initializeDocumentEditor");
+            await JSRuntime.InvokeVoidAsync("initializeDocumentEditor", _activeTabId.ToString());
             var savedTheme = await JSRuntime.InvokeAsync<string>("getThemePreference");
             if (savedTheme == "dark")
             {
@@ -897,6 +897,8 @@ public async Task OpenFileDirect()
             targetTab = new DocTab { FileName = "loading", IsEmpty = false };
             _tabs.Add(targetTab);
             _activeTabId = targetTab.Id;
+            // Create a new editor instance for this tab
+            await JSRuntime.InvokeVoidAsync("createEditorForTab", targetTab.Id.ToString());
             StateHasChanged();
         }
 
@@ -913,13 +915,13 @@ public async Task OpenFileDirect()
                 var err = errorProp.GetString() ?? "";
                 if (err == "CANCELLED")
                 {
-                    // Remove the tab if we just created it
-                    if (targetTab.FileName == "loading") { _tabs.Remove(targetTab); if (activeTab != null) _activeTabId = activeTab.Id; }
+                    // Remove the tab and destroy its editor if we just created it
+                    if (targetTab.FileName == "loading") { await JSRuntime.InvokeVoidAsync("destroyEditorForTab", tabId); _tabs.Remove(targetTab); if (activeTab != null) { _activeTabId = activeTab.Id; await JSRuntime.InvokeVoidAsync("switchTab", "", activeTab.Id.ToString(), activeTab.IsEmpty); } }
                     StateHasChanged();
                     return;
                 }
                 SetStatus($"❌ {err}", true);
-                if (targetTab.FileName == "loading") { _tabs.Remove(targetTab); if (activeTab != null) _activeTabId = activeTab.Id; }
+                if (targetTab.FileName == "loading") { await JSRuntime.InvokeVoidAsync("destroyEditorForTab", tabId); _tabs.Remove(targetTab); if (activeTab != null) { _activeTabId = activeTab.Id; await JSRuntime.InvokeVoidAsync("switchTab", "", activeTab.Id.ToString(), activeTab.IsEmpty); } }
                 StateHasChanged();
                 return;
             }
@@ -932,7 +934,7 @@ if (string.IsNullOrEmpty(sfdt))
 {
     SetStatus("❌ Import returned empty result.", true);
     await JSRuntime.InvokeVoidAsync("clearFileHandle", tabId);
-    if (targetTab.FileName == "loading") { _tabs.Remove(targetTab); if (activeTab != null) _activeTabId = activeTab.Id; }
+    if (targetTab.FileName == "loading") { await JSRuntime.InvokeVoidAsync("destroyEditorForTab", tabId); _tabs.Remove(targetTab); if (activeTab != null) { _activeTabId = activeTab.Id; await JSRuntime.InvokeVoidAsync("switchTab", "", activeTab.Id.ToString(), activeTab.IsEmpty); } }
     StateHasChanged();
     return;
 }
@@ -957,7 +959,7 @@ StateHasChanged();
         {
             SetStatus($"❌ {ex.Message}", true);
             await JSRuntime.InvokeVoidAsync("clearFileHandle", tabId);
-            if (targetTab.FileName == "loading") { _tabs.Remove(targetTab); if (activeTab != null) _activeTabId = activeTab.Id; }
+            if (targetTab.FileName == "loading") { await JSRuntime.InvokeVoidAsync("destroyEditorForTab", tabId); _tabs.Remove(targetTab); if (activeTab != null) { _activeTabId = activeTab.Id; await JSRuntime.InvokeVoidAsync("switchTab", "", activeTab.Id.ToString(), activeTab.IsEmpty); } }
             StateHasChanged();
         }
     }
@@ -984,7 +986,7 @@ StateHasChanged();
             var fileName = file.Name; // Keep original name and extension
             var activeTab = ActiveTab; DocTab targetTab;
             if (activeTab != null && activeTab.IsEmpty) { targetTab = activeTab; }
-            else { targetTab = new DocTab { FileName = "loading", IsEmpty = false }; _tabs.Add(targetTab); _activeTabId = targetTab.Id; }
+            else { targetTab = new DocTab { FileName = "loading", IsEmpty = false }; _tabs.Add(targetTab); _activeTabId = targetTab.Id; await JSRuntime.InvokeVoidAsync("createEditorForTab", targetTab.Id.ToString()); }
             targetTab.FileName = fileName; targetTab.IsModified = false; targetTab.IsEmpty = false;
             await JSRuntime.InvokeVoidAsync("storeSfdtToDb", targetTab.Id.ToString(), sfdt);
             // File opened via upload — no file handle, so first Save will trigger Save As
@@ -1253,15 +1255,10 @@ if (!hasHandle)
 
 private async Task NewTab()
     {
-        // Save current tab to IndexedDB (no SFDT in .NET memory)
-        var current = ActiveTab;
-        if (current != null && !current.IsEmpty)
-        {
-            await JSRuntime.InvokeVoidAsync("saveCurrentEditorToDb", current.Id.ToString());
-        }
+        // Create a new tab with its own editor instance (no serialize/deserialize!)
         var tab = new DocTab { FileName = "Untitled.docx", IsEmpty = true };
         _tabs.Add(tab); _activeTabId = tab.Id;
-        await JSRuntime.InvokeVoidAsync("loadBlankDocument");
+        await JSRuntime.InvokeVoidAsync("createEditorForTab", tab.Id.ToString());
         StateHasChanged();
     }
 
@@ -1272,15 +1269,13 @@ private async Task NewTab()
 private async Task SwitchTab(Guid tabId)
     {
         if (tabId == _activeTabId) return;
-        var currentTab = ActiveTab;
         var nextTab = _tabs.FirstOrDefault(t => t.Id == tabId);
         if (nextTab == null) return;
-        // All SFDT stays in JS/IndexedDB — never passes through .NET
+        // Just toggle visibility — NO serialize, NO IndexedDB, NO open()!
         await JSRuntime.InvokeVoidAsync("switchTab",
-            currentTab?.Id.ToString() ?? "",
+            _activeTabId.ToString(),
             nextTab.Id.ToString(),
             nextTab.IsEmpty);
-        if (currentTab != null && !currentTab.IsEmpty) currentTab.IsEmpty = false;
         _activeTabId = tabId;
         StateHasChanged();
     }
@@ -1309,11 +1304,11 @@ private async Task CloseTab(Guid tabId)
         var tab = _tabs.FirstOrDefault(t => t.Id == tabId);
         if (tab == null) return;
 
-        await JSRuntime.InvokeVoidAsync("tabDbDelete", tab.Id.ToString());
         await JSRuntime.InvokeVoidAsync("clearFileHandle", tab.Id.ToString());
 
         if (_tabs.Count == 1)
         {
+            // Last tab — reset it instead of closing
             tab.FileName = "Untitled.docx"; tab.IsModified = false; tab.IsEmpty = true;
             await JSRuntime.InvokeVoidAsync("loadBlankDocument");
             StateHasChanged(); return;
@@ -1322,10 +1317,9 @@ private async Task CloseTab(Guid tabId)
         var idx = _tabs.IndexOf(tab); _tabs.Remove(tab);
         var next = _tabs[Math.Min(idx, _tabs.Count - 1)];
         _activeTabId = next.Id;
-        if (next.IsEmpty)
-            await JSRuntime.InvokeVoidAsync("loadBlankDocument");
-        else
-            await JSRuntime.InvokeAsync<bool>("loadTabFromDb", next.Id.ToString());
+        // Destroy the closed tab's editor, then show the next one (already in memory!)
+        await JSRuntime.InvokeVoidAsync("destroyEditorForTab", tab.Id.ToString());
+        await JSRuntime.InvokeVoidAsync("switchTab", "", next.Id.ToString(), next.IsEmpty);
         StateHasChanged();
     }
 
@@ -1364,7 +1358,7 @@ private async Task CloseTab(Guid tabId)
         await ForceCloseTab(tabId);
     }
 
-    private async Task SaveCurrentTabSfdt() { var current = ActiveTab; if (current == null || current.IsEmpty) return; await JSRuntime.InvokeVoidAsync("saveCurrentEditorToDb", current.Id.ToString()); current.IsModified = true; }
+    private async Task SaveCurrentTabSfdt() { var current = ActiveTab; if (current == null || current.IsEmpty) return; current.IsModified = true; }
 
     private void AddMessage(string role, string html, string? applicable) { _chatMessages.Add(new ChatMessage(role, html, applicable)); StateHasChanged(); }
     private async Task ScrollChatToBottom() { await Task.Delay(80); try { await JSRuntime.InvokeVoidAsync("eval","var el=document.getElementById('chatMessages');if(el)el.scrollTop=el.scrollHeight;"); } catch { } }
@@ -1391,5 +1385,5 @@ private async Task CloseTab(Guid tabId)
     private class RecentFile { public string Name { get; set; } = string.Empty; public string OpenedAt { get; set; } = string.Empty; public string TimeLabel { get; set; } = string.Empty; }
     private class RecentFileDto { public string Name { get; set; } = string.Empty; public string OpenedAt { get; set; } = string.Empty; }
 
-    public void Dispose() { JSRuntime.InvokeVoidAsync("stopAutoSave"); _selfRef?.Dispose(); }
+    public void Dispose() { JSRuntime.InvokeVoidAsync("stopAutoSave"); foreach (var tab in _tabs) { JSRuntime.InvokeVoidAsync("destroyEditorForTab", tab.Id.ToString()); } _selfRef?.Dispose(); }
 }

@@ -146,7 +146,7 @@
 .e-de-op-more-less .e-checkbox-wrapper:hover .e-label { color: #2C2B27 !important; }
 
 .e-de-op-msg,
-.container1_editor_messageDiv {
+[class*="_editor_messageDiv"] {
     font-size: .76rem !important;
     color: #6B6860 !important;
     padding: 4px 14px 6px !important;
@@ -241,7 +241,7 @@
     border-color: #B8B5AF !important;
 }
 
-#container1_editor_treeDiv {
+[id$="_editor_treeDiv"] {
     background: #F4F3F0 !important;
     padding: 6px 8px !important;
 }
