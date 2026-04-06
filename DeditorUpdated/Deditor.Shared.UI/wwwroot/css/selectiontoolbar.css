@@ -1,0 +1,86 @@
+/* ══════════════════════════════════════════════════════════════════════════
+   FLOATING SELECTION TOOLBAR — Warm gray chrome theme
+══════════════════════════════════════════════════════════════════════════ */
+
+.sel-toolbar {
+    display: none;
+    position: fixed;
+    z-index: 9999;
+    align-items: center;
+    gap: 2px;
+    padding: 4px 6px;
+    background: #F4F3F0;
+    border: 1px solid #D6D4CF;
+    border-radius: 8px;
+    box-shadow:
+        0 4px 16px rgba(0,0,0,.14),
+        0 1px 4px rgba(0,0,0,.08);
+    font-family: 'DM Sans', 'Segoe UI', system-ui, sans-serif;
+    user-select: none;
+    white-space: nowrap;
+    pointer-events: all;
+    animation: selTbFade .12s ease-out;
+}
+
+@keyframes selTbFade {
+    from { opacity: 0; transform: translateY(4px); }
+    to   { opacity: 1; transform: translateY(0);   }
+}
+
+.sel-tb-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    height: 28px;
+    padding: 0 8px;
+    border: none;
+    border-radius: 5px;
+    background: transparent;
+    color: #2C2B27;
+    font-size: .78rem;
+    font-weight: 500;
+    font-family: inherit;
+    cursor: pointer;
+    transition: background .1s, color .1s;
+    line-height: 1;
+}
+
+.sel-tb-btn:hover { background: #DEDAD5; color: #2C2B27; }
+.sel-tb-btn:active { background: #D2CEC8; }
+
+.sel-fmt-bold    { font-weight: 700; min-width: 28px; }
+.sel-fmt-italic  { font-style: italic; min-width: 28px; }
+.sel-fmt-under   { text-decoration: underline; min-width: 28px; }
+.sel-fmt-strike  { text-decoration: line-through; min-width: 28px; }
+
+.sel-fmt-title,
+.sel-fmt-initial { font-size: .75rem; color: #6B6860; }
+.sel-fmt-title:hover,
+.sel-fmt-initial:hover { color: #2C2B27; }
+
+.sel-fmt-ess {
+    color: #8B5CF6;
+    font-size: .75rem;
+    padding: 0 9px;
+}
+.sel-fmt-ess:hover { background: #EDE9F8; color: #7C4FDE; }
+
+.sel-fmt-font {
+    color: #6B6860;
+    font-size: .75rem;
+    padding: 0 8px;
+    gap: 4px;
+}
+.sel-fmt-font svg { flex-shrink: 0; opacity: .7; }
+.sel-fmt-font:hover { color: #2C2B27; }
+.sel-fmt-font:hover svg { opacity: 1; }
+
+.sel-tb-div {
+    display: inline-block;
+    width: 1px;
+    height: 18px;
+    background: #D6D4CF;
+    margin: 0 2px;
+    flex-shrink: 0;
+}

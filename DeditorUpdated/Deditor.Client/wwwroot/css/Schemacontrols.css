@@ -1,0 +1,445 @@
+/* ══════════════════════════════════════════════════════════════════════════
+   SCHEMA CONTENT CONTROLS — Sidebar section styles
+══════════════════════════════════════════════════════════════════════════ */
+
+/* ── Schema upload area ──────────────────────────────────── */
+.schema-upload-area {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 8px 0;
+}
+
+.schema-upload-btn {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 10px;
+    background: var(--n-hover);
+    border: 1px dashed var(--n-border);
+    border-radius: 6px;
+    color: var(--n-text-2);
+    font-size: .72rem;
+    font-family: 'DM Sans', 'Segoe UI', system-ui, sans-serif;
+    cursor: pointer;
+    transition: all .15s;
+}
+.schema-upload-btn:hover {
+    background: var(--n-surface);
+    border-color: var(--n-text-3);
+    color: var(--n-text);
+}
+.schema-upload-btn svg { opacity: .6; }
+
+/* Extract from Document button — more prominent */
+button.schema-upload-btn {
+    background: var(--n-surface);
+    border: 1px solid var(--n-border);
+    font-weight: 500;
+    color: var(--n-text);
+    width: 100%;
+    justify-content: center;
+}
+button.schema-upload-btn:hover {
+    background: var(--n-hover);
+    border-color: var(--n-text-3);
+}
+
+.schema-loaded-badge {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    padding: 4px 8px;
+    background: rgba(34, 197, 94, .08);
+    border: 1px solid rgba(34, 197, 94, .2);
+    border-radius: 5px;
+    font-size: .68rem;
+    color: #16a34a;
+}
+[data-theme="dark"] .schema-loaded-badge {
+    background: rgba(34, 197, 94, .1);
+    border-color: rgba(34, 197, 94, .25);
+    color: #4ade80;
+}
+
+/* ── Content controls group ──────────────────────────────── */
+.cc-group {
+    margin-bottom: 2px;
+}
+
+.cc-group-header {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    padding: 5px 4px;
+    font-size: .7rem;
+    font-weight: 600;
+    color: var(--n-text-2);
+    cursor: pointer;
+    border-radius: 4px;
+    user-select: none;
+    transition: background .12s;
+}
+.cc-group-header:hover {
+    background: var(--n-hover);
+}
+.cc-group-header .cc-chevron {
+    width: 10px;
+    height: 10px;
+    flex-shrink: 0;
+    transition: transform .15s;
+    opacity: .5;
+}
+.cc-group-header.collapsed .cc-chevron {
+    transform: rotate(-90deg);
+}
+.cc-group-count {
+    margin-left: auto;
+    font-size: .62rem;
+    font-weight: 400;
+    color: var(--n-text-3);
+    background: var(--n-hover);
+    padding: 1px 5px;
+    border-radius: 8px;
+}
+
+.cc-group-body {
+    padding-left: 6px;
+    overflow: hidden;
+    transition: max-height .2s ease;
+}
+.cc-group-body.collapsed {
+    display: none;
+}
+
+/* ── Individual content control field ────────────────────── */
+.cc-field {
+    display: flex;
+    flex-direction: column;
+    padding: 4px 6px;
+    border-radius: 4px;
+    transition: background .12s;
+}
+.cc-field:hover {
+    background: var(--n-hover);
+}
+
+.cc-field-label {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: .65rem;
+    font-weight: 500;
+    color: var(--n-text-3);
+    text-transform: uppercase;
+    letter-spacing: .3px;
+    margin-bottom: 1px;
+}
+.cc-field-label .cc-required {
+    color: #ef4444;
+    font-size: .6rem;
+}
+
+.cc-field-value {
+    font-size: .72rem;
+    color: var(--n-text);
+    line-height: 1.4;
+    word-break: break-word;
+    max-height: 60px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.cc-field-value.empty {
+    color: var(--n-text-3);
+    font-style: italic;
+}
+
+.cc-field-value.richtext {
+    max-height: 80px;
+}
+
+/* ── Type badges ──────────────────────────────────────────── */
+.cc-type-badge {
+    display: inline-block;
+    font-size: .58rem;
+    font-weight: 500;
+    padding: 0 4px;
+    border-radius: 3px;
+    text-transform: uppercase;
+    letter-spacing: .3px;
+}
+.cc-type-badge.text { background: rgba(59,130,246,.1); color: #3b82f6; }
+.cc-type-badge.richtext { background: rgba(168,85,247,.1); color: #a855f7; }
+.cc-type-badge.dropdown { background: rgba(245,158,11,.1); color: #f59e0b; }
+.cc-type-badge.collection { background: rgba(34,197,94,.1); color: #22c55e; }
+.cc-type-badge.sections { background: rgba(236,72,153,.1); color: #ec4899; }
+
+[data-theme="dark"] .cc-type-badge.text { background: rgba(59,130,246,.15); color: #60a5fa; }
+[data-theme="dark"] .cc-type-badge.richtext { background: rgba(168,85,247,.15); color: #c084fc; }
+[data-theme="dark"] .cc-type-badge.dropdown { background: rgba(245,158,11,.15); color: #fbbf24; }
+[data-theme="dark"] .cc-type-badge.collection { background: rgba(34,197,94,.15); color: #4ade80; }
+[data-theme="dark"] .cc-type-badge.sections { background: rgba(236,72,153,.15); color: #f472b6; }
+
+/* ── Collection children (expandable) ────────────────────── */
+.cc-collection-toggle {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 6px;
+    font-size: .68rem;
+    color: var(--n-text-2);
+    cursor: pointer;
+    border-radius: 4px;
+    transition: background .12s;
+}
+.cc-collection-toggle:hover {
+    background: var(--n-hover);
+}
+.cc-collection-toggle .cc-chevron {
+    width: 9px; height: 9px;
+    opacity: .5;
+    transition: transform .15s;
+}
+.cc-collection-toggle.collapsed .cc-chevron {
+    transform: rotate(-90deg);
+}
+
+.cc-child-item {
+    margin-left: 10px;
+    padding: 3px 0;
+    border-left: 2px solid var(--n-border-soft);
+    padding-left: 8px;
+    margin-bottom: 2px;
+}
+
+.cc-child-label {
+    font-size: .66rem;
+    font-weight: 600;
+    color: var(--n-text-2);
+    margin-bottom: 2px;
+}
+
+.cc-child-field {
+    display: flex;
+    gap: 4px;
+    font-size: .66rem;
+    padding: 1px 0;
+}
+.cc-child-field-key {
+    color: var(--n-text-3);
+    min-width: 60px;
+    flex-shrink: 0;
+}
+.cc-child-field-val {
+    color: var(--n-text);
+    word-break: break-word;
+}
+.cc-child-field-val.empty {
+    color: var(--n-text-3);
+    font-style: italic;
+}
+
+/* ── Section depth indicators ────────────────────────────── */
+.cc-section-item {
+    margin-left: 0;
+}
+.cc-section-item[data-depth="1"] { margin-left: 12px; }
+.cc-section-item[data-depth="2"] { margin-left: 24px; }
+.cc-section-item[data-depth="3"] { margin-left: 36px; }
+
+.cc-section-label {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 6px;
+    font-size: .68rem;
+    color: var(--n-text);
+    cursor: pointer;
+    border-radius: 4px;
+    transition: background .12s;
+}
+.cc-section-label:hover {
+    background: var(--n-hover);
+}
+.cc-section-label svg { opacity: .4; flex-shrink: 0; }
+.cc-section-id {
+    font-size: .6rem;
+    color: var(--n-text-3);
+    margin-left: auto;
+}
+
+/* ── Scrollable schema area ──────────────────────────────── */
+.schema-controls-scroll {
+    max-height: calc(100vh - 220px);
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding-right: 2px;
+}
+.schema-controls-scroll::-webkit-scrollbar { width: 4px; }
+.schema-controls-scroll::-webkit-scrollbar-track { background: transparent; }
+.schema-controls-scroll::-webkit-scrollbar-thumb {
+    background: var(--n-border);
+    border-radius: 4px;
+}
+.schema-controls-scroll::-webkit-scrollbar-thumb:hover {
+    background: var(--n-text-3);
+}
+
+/* ── Empty state ──────────────────────────────────────────── */
+.schema-empty-state {
+    text-align: center;
+    padding: 16px 10px 10px;
+    color: var(--n-text-3);
+    font-size: .72rem;
+    line-height: 1.5;
+}
+.schema-empty-state svg {
+    margin-bottom: 6px;
+    opacity: .25;
+}
+
+/* ── Extract button ──────────────────────────────────────── */
+.cc-extract-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+    width: 100%;
+    padding: 8px 12px;
+    background: var(--n-surface);
+    border: 1px solid var(--n-border);
+    border-radius: 7px;
+    color: var(--n-text);
+    font-size: .76rem;
+    font-weight: 600;
+    font-family: 'DM Sans', 'Segoe UI', system-ui, sans-serif;
+    cursor: pointer;
+    transition: all .15s;
+    margin-bottom: 4px;
+}
+.cc-extract-btn:hover {
+    background: var(--n-hover);
+    border-color: var(--n-text-3);
+}
+.cc-extract-btn:active {
+    transform: scale(.98);
+}
+.cc-extract-btn svg {
+    opacity: .5;
+}
+.cc-extract-btn:hover svg {
+    opacity: .8;
+}
+.cc-extract-count {
+    font-size: .62rem;
+    font-weight: 500;
+    background: rgba(34, 197, 94, .12);
+    color: #16a34a;
+    padding: 1px 6px;
+    border-radius: 8px;
+    margin-left: 2px;
+}
+[data-theme="dark"] .cc-extract-count {
+    background: rgba(34, 197, 94, .15);
+    color: #4ade80;
+}
+
+/* ── Schema badge (loaded XSD with remove) ───────────────── */
+.cc-schema-badge {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    padding: 4px 8px;
+    background: rgba(34, 197, 94, .08);
+    border: 1px solid rgba(34, 197, 94, .2);
+    border-radius: 6px;
+    font-size: .68rem;
+    color: #16a34a;
+    margin-top: 4px;
+}
+[data-theme="dark"] .cc-schema-badge {
+    background: rgba(34, 197, 94, .1);
+    border-color: rgba(34, 197, 94, .25);
+    color: #4ade80;
+}
+.cc-schema-name {
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.cc-schema-remove {
+    background: none;
+    border: none;
+    color: var(--n-text-3);
+    font-size: .7rem;
+    cursor: pointer;
+    padding: 0 2px;
+    border-radius: 3px;
+    line-height: 1;
+    transition: color .12s, background .12s;
+}
+.cc-schema-remove:hover {
+    color: #ef4444;
+    background: rgba(239, 68, 68, .08);
+}
+
+/* ── Load XSD link (optional) ────────────────────────────── */
+.cc-schema-link {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+    padding: 5px 8px;
+    margin-top: 4px;
+    font-size: .65rem;
+    color: var(--n-text-3);
+    cursor: pointer;
+    border-radius: 5px;
+    transition: color .12s, background .12s;
+}
+.cc-schema-link:hover {
+    color: var(--n-text-2);
+    background: var(--n-hover);
+}
+.cc-schema-link svg {
+    opacity: .5;
+}
+
+/* ── Clickable items — navigate to document ──────────────── */
+.cc-clickable {
+    cursor: pointer;
+    transition: color .12s, background .12s;
+    border-radius: 3px;
+    padding: 0 2px;
+    margin: 0 -2px;
+}
+.cc-clickable:hover {
+    color: #2383E2;
+    background: rgba(35, 131, 226, .06);
+}
+[data-theme="dark"] .cc-clickable:hover {
+    color: #4C9FE8;
+    background: rgba(76, 159, 232, .1);
+}
+
+.cc-section-label {
+    cursor: pointer;
+}
+.cc-section-label:hover {
+    color: #2383E2 !important;
+}
+[data-theme="dark"] .cc-section-label:hover {
+    color: #4C9FE8 !important;
+}
+
+.cc-child-label {
+    cursor: pointer;
+    transition: color .12s;
+}
+.cc-child-label:hover {
+    color: #2383E2 !important;
+}
+[data-theme="dark"] .cc-child-label:hover {
+    color: #4C9FE8 !important;
+}

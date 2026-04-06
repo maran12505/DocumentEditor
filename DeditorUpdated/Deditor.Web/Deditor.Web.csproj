@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk.BlazorWebAssembly">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RazorLangVersion>latest</RazorLangVersion>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly" Version="10.0.1" />
+    <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.DevServer" Version="10.0.1" PrivateAssets="all" />
+    <PackageReference Include="Syncfusion.Licensing" Version="32.1.52" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Deditor.Core\Deditor.Core.csproj" />
+    <ProjectReference Include="..\Deditor.Shared.UI\Deditor.Shared.UI.csproj" />
+  </ItemGroup>
+
+</Project>

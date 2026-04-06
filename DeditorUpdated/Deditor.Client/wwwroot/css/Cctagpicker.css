@@ -1,0 +1,220 @@
+/* ══════════════════════════════════════════════════════════════════════════
+   CC TAG PICKER v2 — Dropdown injected into Syncfusion's CC dialog
+══════════════════════════════════════════════════════════════════════════ */
+
+.ccp-dropdown {
+    display: none;
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    max-height: 240px;
+    overflow-y: auto;
+    background: #fff;
+    border: 1px solid #ddd;
+    border-top: none;
+    border-radius: 0 0 8px 8px;
+    box-shadow: 0 8px 24px rgba(0,0,0,.12);
+    z-index: 10001;
+    font-family: 'DM Sans', 'Segoe UI', system-ui, sans-serif;
+}
+[data-theme="dark"] .ccp-dropdown {
+    background: #252320;
+    border-color: #4A4744;
+    box-shadow: 0 8px 24px rgba(0,0,0,.4);
+}
+.ccp-dropdown::-webkit-scrollbar { width: 5px; }
+.ccp-dropdown::-webkit-scrollbar-track { background: transparent; }
+.ccp-dropdown::-webkit-scrollbar-thumb { background: #ccc; border-radius: 4px; }
+[data-theme="dark"] .ccp-dropdown::-webkit-scrollbar-thumb { background: #4A4744; }
+
+.ccp-dd-group {
+    padding: 6px 10px 3px;
+    font-size: .6rem;
+    font-weight: 600;
+    color: #999;
+    text-transform: uppercase;
+    letter-spacing: .4px;
+    background: #f8f8f8;
+    position: sticky;
+    top: 0;
+    z-index: 1;
+}
+[data-theme="dark"] .ccp-dd-group {
+    background: #1F1D1B;
+    color: #7D7870;
+}
+
+.ccp-dd-item {
+    padding: 6px 10px;
+    cursor: pointer;
+    font-size: .78rem;
+    color: #333;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: background .08s;
+}
+.ccp-dd-item:hover {
+    background: rgba(35,131,226,.08);
+    color: #2383E2;
+}
+[data-theme="dark"] .ccp-dd-item { color: #ccc; }
+[data-theme="dark"] .ccp-dd-item:hover {
+    background: rgba(76,159,232,.12);
+    color: #4C9FE8;
+}
+
+.ccp-dd-tag {
+    font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+    font-size: .73rem;
+    font-weight: 500;
+    color: #1a1a1a;
+}
+[data-theme="dark"] .ccp-dd-tag { color: #E8E6E1; }
+
+.ccp-dd-desc {
+    font-size: .65rem;
+    color: #999;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+[data-theme="dark"] .ccp-dd-desc { color: #6B6860; }
+
+.ccp-dd-empty {
+    padding: 16px;
+    text-align: center;
+    font-size: .75rem;
+    color: #999;
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   CC TYPE BADGES — Add these to Schemacontrols.css
+   Supports all 7 Syncfusion content control types
+══════════════════════════════════════════════════════════════════════════ */
+
+/* Rich Text (purple) */
+.cc-type-badge.rich-text { background: rgba(168,85,247,.1); color: #a855f7; }
+[data-theme="dark"] .cc-type-badge.rich-text { background: rgba(168,85,247,.15); color: #c084fc; }
+
+/* Plain Text (blue) */
+.cc-type-badge.plain-text { background: rgba(59,130,246,.1); color: #3b82f6; }
+[data-theme="dark"] .cc-type-badge.plain-text { background: rgba(59,130,246,.15); color: #60a5fa; }
+
+/* Picture (pink) */
+.cc-type-badge.picture { background: rgba(236,72,153,.1); color: #ec4899; }
+[data-theme="dark"] .cc-type-badge.picture { background: rgba(236,72,153,.15); color: #f472b6; }
+
+/* Combo Box (amber) */
+.cc-type-badge.combo-box { background: rgba(245,158,11,.1); color: #f59e0b; }
+[data-theme="dark"] .cc-type-badge.combo-box { background: rgba(245,158,11,.15); color: #fbbf24; }
+
+/* Drop-Down (amber) */
+.cc-type-badge.drop-down { background: rgba(245,158,11,.1); color: #f59e0b; }
+[data-theme="dark"] .cc-type-badge.drop-down { background: rgba(245,158,11,.15); color: #fbbf24; }
+
+/* Date Picker (teal) */
+.cc-type-badge.date-picker { background: rgba(20,184,166,.1); color: #14b8a6; }
+[data-theme="dark"] .cc-type-badge.date-picker { background: rgba(20,184,166,.15); color: #5eead4; }
+
+/* Check Box (green) */
+.cc-type-badge.check-box { background: rgba(34,197,94,.1); color: #22c55e; }
+[data-theme="dark"] .cc-type-badge.check-box { background: rgba(34,197,94,.15); color: #4ade80; }
+
+/* ══════════════════════════════════════════════════════════════════════════
+   CC PROPERTY SIDEBAR — Tag list in left sidebar
+══════════════════════════════════════════════════════════════════════════ */
+
+.ccp-sidebar { display:flex;flex-direction:column;height:100%;overflow:hidden; }
+
+.ccp-search-wrap {
+    padding: 0 0 10px;
+}
+.ccp-search-input {
+    width: 100%;
+    padding: 7px 10px;
+    border: 1px solid var(--n-border);
+    border-radius: 6px;
+    font-size: .78rem;
+    font-family: inherit;
+    background: var(--n-bg);
+    color: var(--n-text);
+    outline: none;
+    transition: border-color .15s;
+    box-sizing: border-box;
+}
+.ccp-search-input:focus {
+    border-color: var(--n-accent);
+}
+.ccp-search-input::placeholder {
+    color: var(--n-text-3);
+}
+
+.ccp-tag-list {
+    flex: 1;
+    overflow-y: auto;
+    margin: 0 -14px;
+    padding: 0 6px;
+}
+.ccp-tag-list::-webkit-scrollbar { width: 5px; }
+.ccp-tag-list::-webkit-scrollbar-track { background: transparent; }
+.ccp-tag-list::-webkit-scrollbar-thumb { background: #ccc; border-radius: 4px; }
+[data-theme="dark"] .ccp-tag-list::-webkit-scrollbar-thumb { background: #4A4744; }
+
+.ccp-sidebar-group {
+    padding: 8px 10px 4px;
+    font-size: .6rem;
+    font-weight: 600;
+    color: var(--n-text-3);
+    text-transform: uppercase;
+    letter-spacing: .4px;
+    position: sticky;
+    top: 0;
+    background: var(--n-surface);
+    z-index: 1;
+}
+
+.ccp-sidebar-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 5px 10px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: .78rem;
+    color: var(--n-text-2);
+    transition: background .08s, color .08s;
+    user-select: none;
+}
+.ccp-sidebar-item:hover {
+    background: rgba(35,131,226,.08);
+    color: var(--n-accent);
+}
+[data-theme="dark"] .ccp-sidebar-item:hover {
+    background: rgba(76,159,232,.12);
+    color: #4C9FE8;
+}
+
+.ccp-sidebar-tag {
+    font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+    font-size: .73rem;
+    font-weight: 500;
+    color: var(--n-text);
+    flex-shrink: 0;
+}
+
+.ccp-sidebar-desc {
+    font-size: .65rem;
+    color: var(--n-text-3);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.ccp-sidebar-empty {
+    padding: 20px 10px;
+    text-align: center;
+    font-size: .75rem;
+    color: var(--n-text-3);
+}

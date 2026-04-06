@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Deditor</title>
+    <base href="/" />
+
+    <!-- Syncfusion styles (local copy — CDN blocked by corporate proxy) -->
+    <link href="css/material.css" rel="stylesheet" />
+    
+
+    <!-- App styles -->
+    <link href="css/app.css" rel="stylesheet" />
+    <link href="css/fontdialog.css" rel="stylesheet" />
+    <link href="css/selectiontoolbar.css" rel="stylesheet" />
+    <link href="css/Navigation.css" rel="stylesheet" />
+    <link href="css/Ribbontabs.css" rel="stylesheet" />
+    <link rel="icon" href="data:," />
+    <link href="css/schemacontrols.css" rel="stylesheet" />
+    <link href="css/cctagpicker.css" rel="stylesheet" />
+</head>
+<body>
+    <div id="app">
+        <svg class="loading-progress">
+            <circle r="40%" cx="50%" cy="50%" />
+            <circle r="40%" cx="50%" cy="50%" />
+        </svg>
+        <div class="loading-progress-text"></div>
+    </div>
+
+    <div id="blazor-error-ui">
+        An unhandled error has occurred.
+        <a href="" class="reload">Reload</a>
+        <a class="dismiss">🗙</a>
+    </div>
+
+    <div id="globalLoader" style="
+    position:fixed;top:0;left:0;width:100%;height:100%;
+    background:rgba(0,0,0,.35);display:none;align-items:center;justify-content:center;z-index:9999;
+">
+    <div>
+        <div class="global-spinner"></div>
+        <div id="loaderText" style="
+            font-size:14px;font-weight:600;color:#fff;font-family:'Segoe UI',system-ui,sans-serif;
+            margin-top:16px;text-align:center;
+        "></div>
+    </div>
+</div>
+
+<style>
+            .global-spinner {
+            width: 36px;
+            height: 36px;
+            margin: 0 auto;
+            border: 3px solid #E8E5E0;
+            border-top-color: #2383E2;
+            border-radius: 50%;
+            animation: spinRotate .8s linear infinite;
+        }
+        @keyframes spinRotate {
+            to { transform: rotate(360deg); }
+        }
+</style>
+</div>
+
+    <!-- Syncfusion EJ2 Document Editor bundle (local copy — CDN blocked by corporate proxy) -->
+    <script src="js/ej2.min.js"></script>
+
+    <!-- compromise.js — free open-source NLP for Essential Caps (no API key needed) -->
+    <script src="js/compromise.js"></script>
+
+    <!-- Our custom JS -->
+    <script src="js/documenteditor.js?v=29"></script>
+    <script src="js/selectiontoolbar.js"></script>
+    <script src="js/schemaparser.js"></script>
+    <script src="js/cctagpicker.js"></script>
+    
+
+     <!-- Search input keyboard handling — runs in capture phase before Syncfusion -->
+    <script>
+        document.addEventListener('keydown', function (e) {
+            if (!document.activeElement || document.activeElement.id !== 'searchInput') return;
+ 
+            // Always block keys from reaching Syncfusion editor
+            e.stopPropagation();
+ 
+            // Handle Enter / Shift+Enter directly in JS for instant navigation
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                navigateSearch(e.shiftKey ? 'prev' : 'next');
+            }
+        }, true);
+ 
+        document.addEventListener('keypress', function (e) {
+            if (document.activeElement && document.activeElement.id === 'searchInput')
+                e.stopPropagation();
+        }, true);
+ 
+        document.addEventListener('keyup', function (e) {
+            if (document.activeElement && document.activeElement.id === 'searchInput')
+                e.stopPropagation();
+        }, true);
+ 
+        // Shared navigation function — mirrors window.searchNavigate but called directly
+        function navigateSearch(direction) {
+            if (!window._deContainer) return;
+            var results = window._deContainer.documentEditor.search.searchResults;
+            if (!results || results.length === 0) return;
+            if (direction === 'next') {
+                results.index = (results.index + 1) % results.length;
+            } else {
+                results.index = (results.index - 1 + results.length) % results.length;
+            }
+            // Re-focus search input after Syncfusion steals it
+            setTimeout(function () {
+                var el = document.getElementById('searchInput');
+                if (el) { el.focus(); var l = el.value.length; el.setSelectionRange(l, l); }
+            }, 30);
+        }
+    </script>
+
+    <!-- Blazor WASM runtime -->
+    <script src="_framework/blazor.webassembly.js"></script>
+</body>
+</html>

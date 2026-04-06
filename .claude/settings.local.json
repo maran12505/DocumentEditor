@@ -1,0 +1,41 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(dotnet build:*)",
+      "WebSearch",
+      "WebFetch(domain:ej2.syncfusion.com)",
+      "WebFetch(domain:help.syncfusion.com)",
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:www.syncfusion.com)",
+      "Bash(curl -s -o \"C:\\\\Users\\\\is12505\\\\Documents\\\\Deditor\\\\DeditorUpdated\\\\Deditor.Client\\\\wwwroot\\\\js\\\\ej2.min.js\" \"https://cdn.jsdelivr.net/npm/@syncfusion/ej2@32.1.25/dist/ej2.min.js\" -w \"%{http_code}\" --max-time 15)",
+      "Bash(curl -v \"https://cdn.syncfusion.com/ej2/32.1.25/dist/ej2.min.js\" --max-time 10)",
+      "Bash(curl -k -s -o \"C:\\\\Users\\\\is12505\\\\Documents\\\\Deditor\\\\DeditorUpdated\\\\Deditor.Client\\\\wwwroot\\\\js\\\\ej2.min.js\" \"https://cdn.syncfusion.com/ej2/32.1.25/dist/ej2.min.js\" -w \"%{http_code}\" --max-time 30)",
+      "Bash(curl -k -s -o \"C:\\\\Users\\\\is12505\\\\Documents\\\\Deditor\\\\DeditorUpdated\\\\Deditor.Client\\\\wwwroot\\\\js\\\\ej2.min.js\" \"https://cdn.jsdelivr.net/npm/@syncfusion/ej2@32.1.25/dist/ej2.min.js\" -w \"%{http_code}\" --max-time 30)",
+      "Bash(curl -k -L -s -H \"User-Agent: Mozilla/5.0\" -o \"C:\\\\Users\\\\is12505\\\\Documents\\\\Deditor\\\\DeditorUpdated\\\\Deditor.Client\\\\wwwroot\\\\js\\\\ej2.min.js\" \"https://unpkg.com/@syncfusion/ej2@32.1.25/dist/ej2.min.js\" -w \"%{http_code}\" --max-time 60)",
+      "mcp__Claude_Preview__preview_start",
+      "Bash(dotnet add:*)",
+      "Bash(taskkill //F //PID 28856)",
+      "Bash(cp -r \"C:\\\\Users\\\\is12505\\\\Documents\\\\Deditor\\\\DeditorUpdated\\\\Deditor.Client\\\\wwwroot\\\\css\" \"C:\\\\Users\\\\is12505\\\\Documents\\\\Deditor\\\\DeditorUpdated\\\\Deditor.Shared.UI\\\\wwwroot\\\\css\")",
+      "Bash(cp -r \"C:\\\\Users\\\\is12505\\\\Documents\\\\Deditor\\\\DeditorUpdated\\\\Deditor.Client\\\\wwwroot\\\\js\" \"C:\\\\Users\\\\is12505\\\\Documents\\\\Deditor\\\\DeditorUpdated\\\\Deditor.Shared.UI\\\\wwwroot\\\\js\")",
+      "Bash(cp -r \"C:\\\\Users\\\\is12505\\\\Documents\\\\Deditor\\\\DeditorUpdated\\\\Deditor.Client\\\\wwwroot\\\\images\" \"C:\\\\Users\\\\is12505\\\\Documents\\\\Deditor\\\\DeditorUpdated\\\\Deditor.Shared.UI\\\\wwwroot\\\\images\")",
+      "Bash(powershell -Command \"Copy-Item -Recurse ''C:\\\\Users\\\\is12505\\\\Documents\\\\Deditor\\\\DeditorUpdated\\\\Deditor.Client\\\\wwwroot\\\\css'' ''C:\\\\Users\\\\is12505\\\\Documents\\\\Deditor\\\\DeditorUpdated\\\\Deditor.Shared.UI\\\\wwwroot\\\\css''; Copy-Item -Recurse ''C:\\\\Users\\\\is12505\\\\Documents\\\\Deditor\\\\DeditorUpdated\\\\Deditor.Client\\\\wwwroot\\\\js'' ''C:\\\\Users\\\\is12505\\\\Documents\\\\Deditor\\\\DeditorUpdated\\\\Deditor.Shared.UI\\\\wwwroot\\\\js''; if \\(Test-Path ''C:\\\\Users\\\\is12505\\\\Documents\\\\Deditor\\\\DeditorUpdated\\\\Deditor.Client\\\\wwwroot\\\\images''\\) { Copy-Item -Recurse ''C:\\\\Users\\\\is12505\\\\Documents\\\\Deditor\\\\DeditorUpdated\\\\Deditor.Client\\\\wwwroot\\\\images'' ''C:\\\\Users\\\\is12505\\\\Documents\\\\Deditor\\\\DeditorUpdated\\\\Deditor.Shared.UI\\\\wwwroot\\\\images'' }; Get-ChildItem ''C:\\\\Users\\\\is12505\\\\Documents\\\\Deditor\\\\DeditorUpdated\\\\Deditor.Shared.UI\\\\wwwroot''\")",
+      "Bash(powershell -Command \"Copy-Item ''C:\\\\Users\\\\is12505\\\\Documents\\\\Deditor\\\\DeditorUpdated\\\\Deditor.Client\\\\Pages\\\\Welcome.razor'' ''C:\\\\Users\\\\is12505\\\\Documents\\\\Deditor\\\\DeditorUpdated\\\\Deditor.Shared.UI\\\\Pages\\\\Welcome.razor''; Copy-Item ''C:\\\\Users\\\\is12505\\\\Documents\\\\Deditor\\\\DeditorUpdated\\\\Deditor.Client\\\\Pages\\\\DocumentEditor.razor'' ''C:\\\\Users\\\\is12505\\\\Documents\\\\Deditor\\\\DeditorUpdated\\\\Deditor.Shared.UI\\\\Pages\\\\DocumentEditor.razor''; if \\(Test-Path ''C:\\\\Users\\\\is12505\\\\Documents\\\\Deditor\\\\DeditorUpdated\\\\Deditor.Client\\\\Pages\\\\DocumentEditor.razor.css''\\) { Copy-Item ''C:\\\\Users\\\\is12505\\\\Documents\\\\Deditor\\\\DeditorUpdated\\\\Deditor.Client\\\\Pages\\\\DocumentEditor.razor.css'' ''C:\\\\Users\\\\is12505\\\\Documents\\\\Deditor\\\\DeditorUpdated\\\\Deditor.Shared.UI\\\\Pages\\\\DocumentEditor.razor.css'' }; Get-ChildItem ''C:\\\\Users\\\\is12505\\\\Documents\\\\Deditor\\\\DeditorUpdated\\\\Deditor.Shared.UI\\\\Pages''\")",
+      "Bash(powershell -Command \"New-Item -ItemType Directory -Force ''C:\\\\Users\\\\is12505\\\\Documents\\\\Deditor\\\\DeditorUpdated\\\\Deditor.Web\\\\Services'',''C:\\\\Users\\\\is12505\\\\Documents\\\\Deditor\\\\DeditorUpdated\\\\Deditor.Web\\\\wwwroot'',''C:\\\\Users\\\\is12505\\\\Documents\\\\Deditor\\\\DeditorUpdated\\\\Deditor.Web\\\\Properties''\")",
+      "Bash(Out-Null)",
+      "Bash(dotnet restore:*)",
+      "Bash(dotnet workload:*)",
+      "Bash(dotnet clean:*)",
+      "Bash(powershell -Command \"Get-ChildItem -Recurse -Directory -Include bin,obj | Remove-Item -Recurse -Force\")",
+      "Bash(powershell -Command \"Get-Process dotnet -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue; Start-Sleep -Seconds 2; Get-ChildItem -Path ''C:\\\\Users\\\\is12505\\\\Documents\\\\Deditor\\\\DeditorUpdated'' -Recurse -Directory -Include bin,obj | Remove-Item -Recurse -Force -ErrorAction SilentlyContinue; echo ''Done''\")",
+      "Bash(powershell -Command \"Get-Process dotnet -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue; Start-Sleep -Seconds 1; Get-ChildItem -Recurse -Directory -Include bin,obj | Remove-Item -Recurse -Force -ErrorAction SilentlyContinue\")",
+      "Bash(powershell -Command \"Stop-Process -Name ''''Deditor.Maui'''' -Force -ErrorAction SilentlyContinue; Start-Sleep -Seconds 2\")",
+      "Bash(powershell -Command \"Stop-Process -Name ''Deditor.Maui'' -Force -ErrorAction SilentlyContinue; Stop-Process -Name ''Deditor.Server'' -Force -ErrorAction SilentlyContinue; Stop-Process -Name ''dotnet'' -Force -ErrorAction SilentlyContinue; Start-Sleep -Seconds 2\")",
+      "Bash(powershell -Command \"Get-ChildItem -Recurse -Directory -Include bin,obj | Remove-Item -Recurse -Force -ErrorAction SilentlyContinue\")",
+      "Bash(dotnet run:*)",
+      "Bash(timeout 5)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:5278/api/documenteditor/loaddefaultdictionary)",
+      "Bash(curl -s -D - -o /dev/null -H \"Origin: https://0.0.0.1\" -X OPTIONS http://localhost:5278/api/documenteditor/import)",
+      "Bash(curl -s -D - -o /dev/null -H \"Origin: https://0.0.0.1\" -X POST http://localhost:5278/api/documenteditor/loaddefaultdictionary)"
+    ]
+  }
+}

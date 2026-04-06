@@ -1,0 +1,12 @@
+{
+  "profiles": {
+    "Deditor.Client": {
+      "commandName": "Project",
+      "launchBrowser": true,
+      "environmentVariables": {
+        "ASPNETCORE_ENVIRONMENT": "Development"
+      },
+      "applicationUrl": "https://localhost:57577;http://localhost:57578"
+    }
+  }
+}
