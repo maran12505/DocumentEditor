@@ -3,6 +3,7 @@ using Microsoft.Extensions.Logging;
 using Deditor.Core.Services;
 using Deditor.Core.Services.Interfaces;
 using Deditor.Maui.Services;
+using Syncfusion.Blazor;
 
 namespace Deditor.Maui
 {
@@ -23,6 +24,12 @@ namespace Deditor.Maui
                 });
 
             builder.Services.AddMauiBlazorWebView();
+
+            // Syncfusion Blazor components (DropDowns / Inputs / Buttons used by
+            // the iPubEdit Meta dialog). Required at MAUI host level — without
+            // this the dialog crashes with "no registered service of type
+            // Syncfusion.Blazor.SyncfusionBlazorService".
+            builder.Services.AddSyncfusionBlazor();
 
 #if DEBUG
             builder.Services.AddBlazorWebViewDeveloperTools();

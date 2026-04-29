@@ -44,6 +44,8 @@
     .n-focus-mode .n-left-sidebar,
     .n-focus-mode .n-ai-sidebar,
     .n-focus-mode .n-sheet-bar { display:none !important; }
+    .n-focus-mode .n-ribbon-left,
+    .n-focus-mode .n-ribbon-right { display:none !important; }
     .n-focus-mode .n-main { flex:1; }
 .n-focus-exit {
     position: fixed;
@@ -288,6 +290,243 @@
     .n-toast:hover .n-toast-close { opacity: .8; }
     .n-toast-msg { max-width: 360px; overflow: hidden; text-overflow: ellipsis; }
 
+    /* ── iPubEdit Meta Information Modal ─────────────────────────────── */
+    .ipub-modal {
+        background: var(--n-surface, #fff);
+        border: 1px solid var(--n-border, #e0e0e0);
+        border-radius: 10px;
+        box-shadow: 0 20px 60px rgba(0,0,0,.22);
+        width: 920px; max-width: 96vw; max-height: 90vh;
+        display: flex; flex-direction: column;
+        font-family: inherit;
+        animation: n-slide-up .2s ease;
+    }
+    .ipub-title {
+        display: flex; align-items: center; justify-content: space-between;
+        padding: 10px 14px;
+        background: #E4E2DE !important;
+        color: #2c2b27; border-radius: 10px 10px 0 0;
+        font-size: .82rem; font-weight: 600; letter-spacing: .2px;
+    }
+    .ipub-title .ipub-close {
+        background: transparent; border: none; color: #2c2b27; cursor: pointer;
+        width: 22px; height: 22px; border-radius: 4px; font-size: 1rem;
+        display: flex; align-items: center; justify-content: center;
+        transition: background .12s;
+    }
+    .ipub-title .ipub-close:hover { background: rgba(255,255,255,.18); }
+    .ipub-toolbar {
+        display: flex; justify-content: flex-end;
+        padding: 6px 14px;
+        background: #f5f5f3;
+        border-bottom: 1px solid var(--n-border-soft, #e4e2dc);
+    }
+    [data-theme="dark"] .ipub-toolbar { background: #2a2a2a; border-bottom-color: #3a3a3a; }
+    .ipub-save-btn {
+        display: inline-flex; align-items: center; gap: 5px;
+        padding: 5px 14px; font-size: .76rem; font-weight: 600 !important;
+        color: #ffffff !important;
+        background: #2C2B27 !important; border: none !important;
+        border-radius: 6px !important; cursor: pointer; font-family: inherit;
+        transition: background .12s, border-color .12s;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, .18) !important;
+    }
+    .ipub-save-btn:hover { background: var(--n-hover, #eeeae2); border-color: var(--n-border, #d6d4cf); }
+  
+
+    .ipub-body { padding: 14px 18px; overflow-y: auto; flex: 1; }
+    .ipub-section {
+        border: 1px solid var(--n-border, #d6d4cf);
+        border-radius: 6px;
+        padding: 12px 14px 14px;
+        margin-bottom: 12px;
+        background: var(--n-surface, #fff);
+    }
+    .ipub-section-title {
+        font-size: .72rem; font-weight: 700; color: var(--n-text-2, #444);
+        margin: -20px 0 10px; padding: 0 6px; display: inline-block;
+        background: var(--n-surface, #fff);
+    }
+    .ipub-row {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 14px 16px;
+        margin-bottom: 4px;
+        align-items: end;
+    }
+    .ipub-row-4 { grid-template-columns: repeat(4, 1fr); }
+    .ipub-row-2 { grid-template-columns: repeat(2, 1fr); }
+    /* Vertical-stack field: small uppercase label on top, control below.
+       Aligns every column on a consistent grid baseline. */
+    .ipub-field {
+        display: flex; flex-direction: column;
+        gap: 4px; min-width: 0; font-size: .74rem;
+        /* Reserve a fixed slot at the bottom for validation messages so rows
+           never reflow when an error appears. The .ipub-err span is absolutely
+           positioned into this slot. */
+        position: relative;
+        padding-bottom: 16px;
+    }
+    .ipub-field-full { grid-column: 1 / -1; }
+    /* Bundled checkbox cell — both Copyedit + Pre-Editing share one .ipub-field. */
+    .ipub-field.ipub-checks-field {
+        flex-direction: row; align-items: center; gap: 16px;
+        padding-bottom: 16px;
+    }
+    .ipub-label {
+        font-size: .66rem; font-weight: 600;
+        text-transform: uppercase; letter-spacing: .04em;
+        color: #2c2b27;
+        white-space: normal; flex-shrink: 0; margin: 0;
+        line-height: 1.2;
+    }
+    .ipub-label .req { color: #D44C47; margin-left: 2px; }
+    /* ── Syncfusion polish — flat white box style (matches legacy iPubEdit UI) ── */
+    .ipub-body .e-input-group,
+    .ipub-body .e-ddl.e-input-group,
+    .ipub-body .e-textbox.e-input-group,
+    .ipub-body .e-input-group.e-control-wrapper {
+        font-size: .76rem !important;
+        @* border: 1px solid #d1d5db !important;
+        border-radius: 3px !important; *@
+        border-radius:5px;
+        background: #ffffff !important;
+        box-shadow: none !important;
+    }
+    /* Kill Material's underline pseudo-elements */
+    .ipub-body .e-input-group::before,
+    .ipub-body .e-input-group::after,
+    .ipub-body .e-input-group.e-control-wrapper::before,
+    .ipub-body .e-input-group.e-control-wrapper::after {
+        display: none !important;
+        content: none !important;
+        background: transparent !important;
+    }
+    .ipub-body .e-input-group .e-input,
+    .ipub-body .e-input-group .e-control,
+    .ipub-body .e-ddl input.e-input,
+    .ipub-body .e-input-group input.e-input {
+        font-size: .76rem !important;
+        padding: 5px 8px !important;
+        height: 20px;
+        background: #ffffff !important;
+        color: #2f2f2f !important;
+    }
+    .ipub-body .e-input-group:not(.e-disabled):hover,
+    .ipub-body .e-input-group.e-control-wrapper:not(.e-disabled):hover {
+        border-color: #9ca3af !important;
+    }
+    .ipub-body .e-input-group:not(.e-disabled).e-input-focus,
+    .ipub-body .e-input-group.e-control-wrapper:not(.e-disabled).e-input-focus {
+        border-color: #2383E2 !important;
+        box-shadow: 0 0 0 2px rgba(35,131,226,.12) !important;
+    }
+    .ipub-body .e-input-group .e-input-group-icon,
+    .ipub-body .e-input-group.e-control-wrapper .e-input-group-icon {
+        font-size: .7rem; min-height: 30px;
+        background: transparent !important;
+        border: none !important;
+    }
+    /* Disabled state */
+    .ipub-body .e-input-group.e-disabled,
+    .ipub-body .e-input-group.e-control-wrapper.e-disabled {
+        background: #f5f5f5 !important; opacity: .7;
+    }
+    /* ── Per-field validation (inline) ── */
+    .ipub-field.ipub-invalid .e-input-group,
+    .ipub-field.ipub-invalid .e-input-group.e-control-wrapper {
+        border-color: #dc2626 !important;
+        box-shadow: 0 0 0 2px rgba(220,38,38,.12) !important;
+    }
+    .ipub-field.ipub-invalid .ipub-label { color: #dc2626; }
+    .ipub-err {
+        /* Sits inside the .ipub-field's reserved padding-bottom slot.
+           Absolute positioning means showing/hiding the message never
+           changes the field's outer height — adjacent rows stay aligned. */
+        position: absolute;
+        left: 0; right: 0; bottom: 0;
+        color: #dc2626; font-size: .68rem; line-height: 1.2;
+        white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+        pointer-events: none;
+    }
+    /* Syncfusion dropdown popup — keep inside modal-friendly z-index, capped height */
+    .e-popup.e-ddl.e-popup-open { z-index: 100020 !important; }
+    .e-popup.e-ddl .e-list-parent.e-ul { max-height: 240px !important; }
+    /* Syncfusion checkbox spacing */
+    .ipub-body .e-checkbox-wrapper { margin-right: 0; }
+    .ipub-body .e-checkbox-wrapper .e-label {
+        font-size: .76rem; color: var(--n-text-2, #444); margin-left: 6px;
+    }
+    .ipub-input, .ipub-select {
+        flex: 1; min-width: 0;
+        padding: 4px 7px; font-size: .76rem;
+        border: 1px solid var(--n-border, #bcbcbc);
+        border-radius: 3px; background: #fff; color: var(--n-text, #2f2f2f);
+        font-family: inherit;
+        transition: border-color .12s, box-shadow .12s;
+    }
+    .ipub-input:focus, .ipub-select:focus {
+        outline: none; border-color: #2383E2; box-shadow: 0 0 0 2px rgba(35,131,226,.15);
+    }
+    [data-theme="dark"] .ipub-input, [data-theme="dark"] .ipub-select {
+        background: #2a2a2a; border-color: #3a3a3a; color: #e0e0e0;
+    }
+    /* ── Custom dropdown (IPubDropdown) — popup is capped + scrollable, never overflows modal ── */
+    .ipub-dd { position: relative; flex: 1; min-width: 0; }
+    .ipub-dd-trigger {
+        display: flex; align-items: center; justify-content: space-between;
+        cursor: pointer; text-align: left; width: 100%;
+        background: #fff;
+    }
+    .ipub-dd-trigger:disabled { opacity: .55; cursor: not-allowed; background: #f5f5f5; }
+    .ipub-dd-value {
+        flex: 1; min-width: 0;
+        overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+    .ipub-dd-value.is-placeholder { color: #9ca3af; }
+    .ipub-dd-caret { color: #6b7280; font-size: .65rem; margin-left: 6px; }
+    .ipub-dd.is-open .ipub-dd-caret { transform: rotate(180deg); }
+    .ipub-dd-menu {
+        position: absolute; top: calc(100% + 2px); left: 0; right: 0;
+        max-height: 220px; overflow-y: auto;
+        background: #fff; border: 1px solid #d1d5db; border-radius: 4px;
+        z-index: 10000; box-shadow: 0 4px 12px rgba(0,0,0,.12);
+        font-size: .76rem;
+    }
+    .ipub-dd-item {
+        padding: 6px 10px; cursor: pointer; color: #2f2f2f;
+        white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .ipub-dd-item:hover { background: #eff6ff; }
+    .ipub-dd-item.is-selected { background: #dbeafe; font-weight: 600; }
+    .ipub-dd-item-placeholder { color: #9ca3af; }
+    .ipub-dd-item.is-empty { color: #9ca3af; cursor: default; font-style: italic; }
+    [data-theme="dark"] .ipub-dd-trigger { background: #2a2a2a; color: #e0e0e0; }
+    [data-theme="dark"] .ipub-dd-menu { background: #2a2a2a; border-color: #3a3a3a; }
+    [data-theme="dark"] .ipub-dd-item { color: #e0e0e0; }
+    [data-theme="dark"] .ipub-dd-item:hover { background: #3a3a3a; }
+    [data-theme="dark"] .ipub-dd-item.is-selected { background: #1e3a5f; }
+    .ipub-checks { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+    .ipub-check { display: inline-flex; align-items: center; gap: 5px; font-size: .76rem; color: var(--n-text-2); }
+    .ipub-tabs {
+        display: flex; gap: 0;
+        border-bottom: 1px solid var(--n-border, #d6d4cf);
+        margin-bottom: 10px;
+    }
+    .ipub-tab {
+        padding: 6px 16px; font-size: .76rem; font-weight: 600;
+        color: var(--n-text-3); cursor: pointer;
+        border: 1px solid transparent; border-bottom: none;
+        border-radius: 5px 5px 0 0;
+        margin-bottom: -1px;
+        background: transparent;
+    }
+    .ipub-tab.active {
+        color: var(--n-text, #2f2f2f);
+        background: var(--n-surface, #fff);
+        border-color: var(--n-border, #d6d4cf);
+    }
+
     .n-toast-success { background: #f0fdf4; color: #166534; border: 1px solid #bbf7d0; }
     .n-toast-success .n-toast-icon { background: #22c55e; color: #fff; }
     .n-toast-error { background: #fef2f2; color: #991b1b; border: 1px solid #fecaca; }
@@ -328,115 +567,28 @@
 
 }
 
-<!-- ══ Top bar ══════════════════════════════════════════════════════════ -->
-<header class="n-topbar">
-    <div class="n-topbar-left">
-        <button class="n-btn n-btn-ghost n-btn-icon @(_leftPaneOpen ? "active" : "")"
-                @onclick="ToggleLeftPane" title="Toggle Panel">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
-                <rect x="3" y="3" width="18" height="18" rx="2"/><line x1="9" y1="3" x2="9" y2="21"/>
-            </svg>
-        </button>
-        <div class="n-divider-v"></div>
-        <div class="logo">
-            <img src="@(_isDarkMode ? "_content/Deditor.Shared.UI/images/Logo1.png" : "_content/Deditor.Shared.UI/images/Logo.png")" alt="Logo" class="logo-img" />
-            <span class="logo-text">DEditor</span>
-        </div>
-        <div class="n-divider-v"></div>
-        <InputFile id="fileUploadInput" OnChange="HandleFileUpload"
-             accept=".docx,.doc,.rtf,.txt,.xml" style="display:none" />
-    </div>
-
-    <div class="n-topbar-right">
-
-
-        @* <div class="n-divider-v"></div> *@
-
-        <button class="n-btn n-btn-ghost n-btn-icon @(_navPaneOpen ? "active" : "")"
-                @onclick="ToggleNavigationPane" title="Find &amp; Replace (Ctrl+F)">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-                <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
-            </svg>
-        </button>
-
-<button class="n-btn n-btn-ghost n-btn-icon" @onclick="EnterFocusMode" title="Focus Mode">
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-        <polyline points="4 14 4 20 10 20"/>
-        <polyline points="20 10 20 4 14 4"/>
-        <line x1="14" y1="10" x2="20" y2="4"/>
-        <line x1="4" y1="20" x2="10" y2="14"/>
-    </svg>
-</button>
-
-     <div class="n-divider-v"></div>
-
-        <button class="n-btn n-btn-ghost n-btn-icon n-theme-toggle"
-                @onclick="ToggleTheme"
-                title="@(_isDarkMode ? "Switch to Light Mode" : "Switch to Dark Mode")">
-            @if (_isDarkMode)
-            {
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
-                    <circle cx="12" cy="12" r="5"/>
-                    <line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/>
-                    <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
-                    <line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/>
-                    <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
-                </svg>
-            }
-            else
-            {
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
-                    <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
-                </svg>
-            }
-        </button>
-
-
-       <!-- ── Save / Save As ────────────────────────────────────────── -->
-        <div class="n-save-group">
-            <!-- Save — classic floppy disk -->
-            <button class="n-btn1 n-btn-ghost" @onclick="SaveDocument" title="Save (Ctrl+S)">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
-                    <polyline points="17 21 17 13 7 13 7 21"/>
-                    <polyline points="7 3 7 8 15 8"/>
-                </svg>
-            </button>
-
-             <div class="n-divider-v"></div>
-            <!-- Save As — floppy disk with pencil/edit indicator -->
-           <button id="btnSaveAs" class="n-btn1 n-btn-ghost" title="Save As (Ctrl+Shift+S)" data-tab-id="@(ActiveTab?.Id)" data-filename="@(ActiveTab?.FileName ?? "Untitled.docx")">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M13 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v4"/>
-                    <polyline points="7 3 7 8 15 8"/>
-                    <path d="M17 21.5l4.5-4.5-2-2L15 19.5V21.5h2z"/>
-                </svg>
-            </button>
-        </div>
-
-        <div class="n-divider-v"></div>
-
-        <!-- ── AI Manuscript Processor ─────────────────────────────── -->
-        <button class="n-btn n-btn-manuscript @(_manuscriptProcessing ? "processing" : "")"
-                @onclick="ProcessManuscript" title="AI Manuscript Processor"
-                disabled="@_manuscriptProcessing">
-            @if (_manuscriptProcessing)
-            {
-                <span class="n-manuscript-spinner"></span>
-                <span>Analyzing...</span>
-            }
-            else
-            {
-                <span>✦ AI</span>
-            }
-        </button>
-
-        <div class="n-divider-v"></div>
-        <button class="n-btn n-btn-ai @(_chatOpen ? "active" : "")" @onclick="ToggleChat" title="Toggle AI Assistant">
-            <span class="n-ai-star">✦</span> AI
-        </button>
-        <div class="avatar">U</div>
-    </div>
+<!-- ══ Hidden header (Blazor event handlers, forwarded from ribbon-injected buttons) ══ -->
+<header class="n-topbar n-topbar--hidden">
+    <button id="nBtnSidebarToggle" class="n-btn n-btn-ghost n-btn-icon @(_leftPaneOpen ? "active" : "")"
+            @onclick="ToggleLeftPane" title="Toggle Panel"></button>
+    <button id="nBtnMeta" class="n-btn n-btn-ghost n-btn-icon"
+            @onclick="OpenMetaDialog" title="iPubEdit Meta Information"></button>
+    <button id="nBtnSearch" class="n-btn n-btn-ghost n-btn-icon @(_navPaneOpen ? "active" : "")"
+            @onclick="ToggleNavigationPane" title="Find &amp; Replace (Ctrl+F)"></button>
+    <button id="nBtnFocusMode" class="n-btn n-btn-ghost n-btn-icon"
+            @onclick="EnterFocusMode" title="Focus Mode"></button>
+    <button id="nBtnTheme" class="n-btn n-btn-ghost n-btn-icon n-theme-toggle"
+            @onclick="ToggleTheme"></button>
+    <button id="nBtnSave" class="n-btn1 n-btn-ghost" @onclick="SaveDocument" title="Save (Ctrl+S)"></button>
+    <button id="btnSaveAs" class="n-btn1 n-btn-ghost" title="Save As (Ctrl+Shift+S)"
+            data-tab-id="@(ActiveTab?.Id)" data-filename="@(ActiveTab?.FileName ?? "Untitled.docx")"></button>
+    <button id="nBtnManuscript" class="n-btn n-btn-manuscript @(_manuscriptProcessing ? "processing" : "")"
+            @onclick="ProcessManuscript" title="AI Manuscript Processor"
+            disabled="@_manuscriptProcessing"></button>
+    <button id="nBtnAiChat" class="n-btn n-btn-ai @(_chatOpen ? "active" : "")"
+            @onclick="ToggleChat" title="Toggle AI Assistant"></button>
+    <InputFile id="fileUploadInput" OnChange="HandleFileUpload"
+         accept=".docx,.doc,.rtf,.txt,.xml" style="display:none" />
 </header>
 
 <!-- ══ Recovery Banner ═══════════════════════════════════════════════════ -->
@@ -792,6 +944,12 @@
     }
 
     <div class="n-editor-area">
+        <button class="n-sidebar-fab @(_leftPaneOpen ? "active" : "")"
+                @onclick="ToggleLeftPane" title="Toggle Panel">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                <rect x="3" y="3" width="18" height="18" rx="2"/><line x1="9" y1="3" x2="9" y2="21"/>
+            </svg>
+        </button>
         <div id="editorArea"></div>
     </div>
 
@@ -803,6 +961,20 @@
                 <button class="n-ai-close" @onclick="ToggleChat" title="Close">✕</button>
             </div>
             <div class="n-ai-actions">
+                <button class="n-ai-processor-btn @(_manuscriptProcessing ? "processing" : "")"
+                        @onclick="ProcessManuscript" disabled="@_manuscriptProcessing">
+                    @if (_manuscriptProcessing)
+                    {
+                        <span class="n-manuscript-spinner"></span>
+                        <span>Analyzing...</span>
+                    }
+                    else
+                    {
+                        <span>✦ AI Processor</span>
+                    }
+                </button>
+            </div>
+            <div class="n-ai-actions" style="border-top:none;padding-top:0;">
                 <button class="n-ai-action-btn" @onclick='() => QuickAction("proofread")' disabled="@_chatLoading">Proofread</button>
                 <button class="n-ai-action-btn" @onclick='() => QuickAction("copyedit")'  disabled="@_chatLoading">Copyedit</button>
             </div>
@@ -967,6 +1139,289 @@
         </div>
     </div>
 }
+
+<!-- ══ iPubEdit Meta Information Modal ══════════════════════════════════ -->
+@if (_showMetaDialog)
+{
+    <div class="n-modal-overlay" @onclick="CloseMetaDialog">
+        <div class="ipub-modal" @onclick:stopPropagation="true">
+            <div class="ipub-title">
+                <span>iPubEdit Meta Information</span>
+                <button class="ipub-close" @onclick="CloseMetaDialog" title="Close">✕</button>
+            </div>
+            <div class="ipub-toolbar">
+                <button class="ipub-save-btn" @onclick="SaveMetadata" title="Save">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                        <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
+                        <polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/>
+                    </svg>
+                    Save
+                </button>
+            </div>
+            <div class="ipub-body">
+                <!-- Header section -->
+                <div class="ipub-row ipub-row-4">
+                    <div class="ipub-field @(_metaErrors.ContainsKey("Publisher") ? "ipub-invalid" : "")">
+                        <label class="ipub-label">Publisher Name<span class="req">*</span></label>
+                        <SfDropDownList TValue="string" TItem="string"
+                                        DataSource="@_publisherNames"
+                                        Value="@_meta.Publisher"
+                                        Placeholder="Select an option"
+                                        AllowFiltering="true"
+                                        FilterType="Syncfusion.Blazor.DropDowns.FilterType.Contains">
+                            <DropDownListEvents TValue="string" TItem="string"
+                                                ValueChange="OnPublisherSfChanged" />
+                        </SfDropDownList>
+                        @if (_metaErrors.TryGetValue("Publisher", out var ePub)) { <span class="ipub-err">@ePub</span> }
+                    </div>
+                    <div class="ipub-field">
+                        <label class="ipub-label">XML Type</label>
+                        <SfDropDownList TValue="string" TItem="string"
+                                        DataSource="@(new[] { "Book", "Journal" })"
+                                        Value="@_meta.XmlType"
+                                        Placeholder="Select an option"
+                                        AllowFiltering="true"
+                                        Readonly="true"
+                                        FilterType="Syncfusion.Blazor.DropDowns.FilterType.Contains">
+                            <DropDownListEvents TValue="string" TItem="string"
+                                                ValueChange="OnXmlTypeSfChanged" />
+                        </SfDropDownList>
+                    </div>
+                    <div class="ipub-field">
+                        <label class="ipub-label">Job Card</label>
+                        <SfTextBox @bind-Value="_meta.JobCard" Placeholder="0" />
+                    </div>
+                </div>
+                <div class="ipub-row" style="margin-bottom:10px;">
+                    <div class="ipub-field ipub-checks-field">
+                        <SfCheckBox TChecked="bool" Label="Copyedit"
+                                    Checked="@_meta.Copyedit"
+                                    ValueChange="OnCopyeditSfChanged" />
+                        <SfCheckBox TChecked="bool" Label="Pre-Editing"
+                                    Checked="@_meta.PreEditing"
+                                    ValueChange="OnPreEditingSfChanged" />
+                    </div>
+                </div>
+
+                @if (_meta.Copyedit || _meta.PreEditing)
+                {
+                    <div class="ipub-row ipub-row-2" style="margin-bottom:10px;">
+                        <div class="ipub-field">
+                            <label class="ipub-label">CE Template</label>
+                            <SfDropDownList TValue="string" TItem="string"
+                                            DataSource="@_ceTemplateOptions"
+                                            Value="@_meta.CeTemplate"
+                                            Placeholder="Select an option"
+                                            AllowFiltering="true"
+                                            FilterType="Syncfusion.Blazor.DropDowns.FilterType.Contains"
+                                            Enabled="@(_ceTemplateOptions.Count > 0)">
+                                <DropDownListEvents TValue="string" TItem="string"
+                                                    ValueChange="OnCeTemplateSfChanged" />
+                            </SfDropDownList>
+                        </div>
+                        <div class="ipub-field">
+                            <label class="ipub-label">Book ID</label>
+                            <SfTextBox @bind-Value="_meta.BookOrJournalId"
+                                       Placeholder="Auto-filled from CE Template" />
+                        </div>
+                    </div>
+                }
+
+                <!-- Tab switcher -->
+                <div class="ipub-tabs">
+                    <div class="ipub-tab active">@(_meta.XmlType == "Journal" ? "Journal" : "Book")</div>
+                </div>
+
+                @if (_meta.XmlType == "Journal")
+                {
+                    <div class="ipub-section">
+                        <div class="ipub-section-title">Journal Information</div>
+                        <div class="ipub-row">
+                            <div class="ipub-field @(_metaErrors.ContainsKey("JournalName") ? "ipub-invalid" : "")">
+                                <label class="ipub-label">Journal Name<span class="req">*</span></label>
+                                <SfTextBox @bind-Value="_meta.JournalName" Placeholder="Enter journal name" />
+                                @if (_metaErrors.TryGetValue("JournalName", out var eJN)) { <span class="ipub-err">@eJN</span> }
+                            </div>
+                            <div class="ipub-field @(_metaErrors.ContainsKey("Dtd") ? "ipub-invalid" : "")">
+                                <label class="ipub-label">DTD<span class="req">*</span></label>
+                                <SfDropDownList TValue="string" TItem="string"
+                                                DataSource="@_knownDtdOptions"
+                                                @bind-Value="_meta.Dtd"
+                                                Placeholder="Select an option"
+                                                AllowFiltering="true"
+                                                FilterType="Syncfusion.Blazor.DropDowns.FilterType.Contains" />
+                                @if (_metaErrors.TryGetValue("Dtd", out var eDtd)) { <span class="ipub-err">@eDtd</span> }
+                            </div>
+                            <div class="ipub-field">
+                                <label class="ipub-label">Country</label>
+                                <SfDropDownList TValue="string" TItem="string"
+                                                DataSource="@(new[] { "None", "US", "UK", "IN" })"
+                                                @bind-Value="_meta.Country"
+                                                Placeholder="Select an option"
+                                                AllowFiltering="true"
+                                                FilterType="Syncfusion.Blazor.DropDowns.FilterType.Contains" />
+                            </div>
+                        </div>
+                        <div class="ipub-row ipub-field-full" style="grid-template-columns:1fr;">
+                            <div class="ipub-field @(_metaErrors.ContainsKey("JournalTitle") ? "ipub-invalid" : "")">
+                                <label class="ipub-label">Journal Title<span class="req">*</span></label>
+                                <SfTextBox @bind-Value="_meta.JournalTitle" Placeholder="Enter journal title" />
+                                @if (_metaErrors.TryGetValue("JournalTitle", out var eJT)) { <span class="ipub-err">@eJT</span> }
+                            </div>
+                        </div>
+                        <div class="ipub-row">
+                            <div class="ipub-field @(_metaErrors.ContainsKey("PIssn") ? "ipub-invalid" : "")">
+                                <label class="ipub-label">P-ISSN<span class="req">*</span></label>
+                                <SfTextBox @bind-Value="_meta.PIssn" Placeholder="e.g. 1234-5678" />
+                                @if (_metaErrors.TryGetValue("PIssn", out var ePI)) { <span class="ipub-err">@ePI</span> }
+                            </div>
+                            <div class="ipub-field">
+                                <label class="ipub-label">E-ISSN</label>
+                                <SfTextBox @bind-Value="_meta.EIssn" Placeholder="e.g. 1234-5678" />
+                            </div>
+                            <div class="ipub-field">
+                                <label class="ipub-label">Pagination Platform</label>
+                                <SfDropDownList TValue="string" TItem="string"
+                                                DataSource="@(new[] { "ThreeB2", "InDesign", "LaTeX" })"
+                                                @bind-Value="_meta.PaginationPlatform"
+                                                Placeholder="Select an option"
+                                                AllowFiltering="true"
+                                                FilterType="Syncfusion.Blazor.DropDowns.FilterType.Contains" />
+                            </div>
+                        </div>
+                        <div class="ipub-row">
+                            <div class="ipub-field">
+                                <label class="ipub-label">Copyrights</label>
+                                <SfTextBox @bind-Value="_meta.Copyrights" Placeholder="© Year, Holder" />
+                            </div>
+                            <div class="ipub-field @(_metaErrors.ContainsKey("PublisherImprint") ? "ipub-invalid" : "")">
+                                <label class="ipub-label">Publisher Imprint<span class="req">*</span></label>
+                                <SfTextBox @bind-Value="_meta.PublisherImprint" Placeholder="Imprint name" />
+                                @if (_metaErrors.TryGetValue("PublisherImprint", out var ePImp)) { <span class="ipub-err">@ePImp</span> }
+                            </div>
+                            <div class="ipub-field">
+                                <label class="ipub-label">Article ID</label>
+                                <SfTextBox @bind-Value="_meta.ArticleId" Placeholder="Article identifier" />
+                            </div>
+                        </div>
+                        <div class="ipub-row">
+                            <div class="ipub-field @(_metaErrors.ContainsKey("Doi") ? "ipub-invalid" : "")">
+                                <label class="ipub-label">DOI</label>
+                                <SfTextBox @bind-Value="_meta.Doi" Placeholder="10.xxxx/xxxxx" />
+                                @if (_metaErrors.TryGetValue("Doi", out var eDoiJ)) { <span class="ipub-err">@eDoiJ</span> }
+                            </div>
+                            <div class="ipub-field">
+                                <label class="ipub-label">Article Type</label>
+                                <SfDropDownList TValue="string" TItem="string"
+                                                DataSource="@(new[] { "Article", "Un-Article" })"
+                                                @bind-Value="_meta.ArticleType"
+                                                Placeholder="Select an option"
+                                                AllowFiltering="true"
+                                                FilterType="Syncfusion.Blazor.DropDowns.FilterType.Contains" />
+                            </div>
+                            <div class="ipub-field">
+                                <label class="ipub-label">Document Type</label>
+                                <SfDropDownList TValue="string" TItem="string"
+                                                DataSource="@_documentTypes"
+                                                @bind-Value="_meta.DocumentType"
+                                                Placeholder="Select an option"
+                                                AllowFiltering="true"
+                                                FilterType="Syncfusion.Blazor.DropDowns.FilterType.Contains" />
+                            </div>
+                        </div>
+                    </div>
+                }
+                else
+                {
+                    <div class="ipub-section">
+                        <div class="ipub-section-title">Book Information</div>
+                        <div class="ipub-row">
+                            <div class="ipub-field">
+                                <label class="ipub-label">DTD</label>
+                                <SfDropDownList TValue="string" TItem="string"
+                                                DataSource="@_knownDtdOptions"
+                                                @bind-Value="_meta.Dtd"
+                                                Placeholder="Select an option"
+                                                AllowFiltering="true"
+                                                FilterType="Syncfusion.Blazor.DropDowns.FilterType.Contains" />
+                            </div>
+                            <div class="ipub-field">
+                                <label class="ipub-label">Pagination Platform</label>
+                                <SfDropDownList TValue="string" TItem="string"
+                                                DataSource="@(new[] { "ThreeB2", "InDesign", "LaTeX" })"
+                                                @bind-Value="_meta.PaginationPlatform"
+                                                Placeholder="Select an option"
+                                                AllowFiltering="true"
+                                                FilterType="Syncfusion.Blazor.DropDowns.FilterType.Contains" />
+                            </div>
+                            <div class="ipub-field">
+                                <label class="ipub-label">Country</label>
+                                <SfDropDownList TValue="string" TItem="string"
+                                                DataSource="@(new[] { "None", "US", "UK", "IN" })"
+                                                @bind-Value="_meta.Country"
+                                                Placeholder="Select an option"
+                                                AllowFiltering="true"
+                                                FilterType="Syncfusion.Blazor.DropDowns.FilterType.Contains" />
+                            </div>
+                        </div>
+                        <div class="ipub-row" style="grid-template-columns:1fr;">
+                            <div class="ipub-field">
+                                <label class="ipub-label">Book Title</label>
+                                <SfTextBox @bind-Value="_meta.BookTitle" Placeholder="Enter book title" />
+                            </div>
+                        </div>
+                        <div class="ipub-row">
+                            <div class="ipub-field @(_metaErrors.ContainsKey("Isbn") ? "ipub-invalid" : "")">
+                                <label class="ipub-label">ISBN</label>
+                                <SfTextBox @bind-Value="_meta.Isbn" Placeholder="10 or 13 digits" />
+                                @if (_metaErrors.TryGetValue("Isbn", out var eIsbn)) { <span class="ipub-err">@eIsbn</span> }
+                            </div>
+                            <div class="ipub-field">
+                                <label class="ipub-label">Month</label>
+                                <SfDropDownList TValue="string" TItem="string"
+                                                DataSource="@_months"
+                                                @bind-Value="_meta.Month"
+                                                Placeholder="Select an option"
+                                                AllowFiltering="true"
+                                                FilterType="Syncfusion.Blazor.DropDowns.FilterType.Contains" />
+                            </div>
+                            <div class="ipub-field @(_metaErrors.ContainsKey("Year") ? "ipub-invalid" : "")">
+                                <label class="ipub-label">Year</label>
+                                <SfTextBox @bind-Value="_meta.Year" Placeholder="YYYY" />
+                                @if (_metaErrors.TryGetValue("Year", out var eYr)) { <span class="ipub-err">@eYr</span> }
+                            </div>
+                        </div>
+                        <div class="ipub-row">
+                            <div class="ipub-field">
+                                <label class="ipub-label">Language</label>
+                                <SfDropDownList TValue="string" TItem="string"
+                                                DataSource="@_languages"
+                                                @bind-Value="_meta.Language"
+                                                Placeholder="Select an option"
+                                                AllowFiltering="true"
+                                                FilterType="Syncfusion.Blazor.DropDowns.FilterType.Contains" />
+                            </div>
+                            <div class="ipub-field">
+                                <label class="ipub-label">Process Type</label>
+                                <SfDropDownList TValue="string" TItem="string"
+                                                DataSource="@(new[] { "Book", "Chapter" })"
+                                                @bind-Value="_meta.ProcessType"
+                                                Placeholder="Select an option"
+                                                AllowFiltering="true"
+                                                FilterType="Syncfusion.Blazor.DropDowns.FilterType.Contains" />
+                            </div>
+                            <div class="ipub-field @(_metaErrors.ContainsKey("Doi") ? "ipub-invalid" : "")">
+                                <label class="ipub-label">DOI</label>
+                                <SfTextBox @bind-Value="_meta.Doi" Placeholder="10.xxxx/xxxxx" />
+                                @if (_metaErrors.TryGetValue("Doi", out var eDoiB)) { <span class="ipub-err">@eDoiB</span> }
+                            </div>
+                        </div>
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+}
 </div>
 
 @code {
@@ -1038,6 +1493,437 @@
     private double _slashPickerY       = 0;
     private int    _slashActiveIdx     = 0;
 
+    // ── iPubEdit Meta Information dialog state ──────────────────────────────
+    private bool _showMetaDialog = false;
+    private IPubEditMeta _meta = new();
+    // Per-field validation errors (key = field name, value = message). Empty when valid.
+    private Dictionary<string, string> _metaErrors = new();
+    // Per-tab in-memory cache (mirrors per-document localStorage)
+    private readonly Dictionary<Guid, IPubEditMeta> _metaByTab = new();
+    private readonly HashSet<Guid> _metaLoadedTabs = new();
+    // Publisher-scoped CE Template options. Refilled on publisher change / metadata load.
+    private List<string> _ceTemplateOptions = new();
+    // Static option lists used by Syncfusion dropdowns (declared once so the array
+    // reference is stable across renders — Syncfusion datasources are diffed by ref).
+    private string[] _publisherNames => _publishers.Select(p => p.Name).ToArray();
+    private static readonly string[] _months = new[] {
+        "January","February","March","April","May","June",
+        "July","August","September","October","November","December" };
+    private static readonly string[] _languages = new[] {
+        "English","French","German","Greek","Chinese","Japanese","Spanish" };
+    private static readonly string[] _documentTypes = new[] {
+        "Systematic Review","Technical Report","Research Article","Original Research",
+        "Review Article","Case Report","Technical Note","Brief Note","Report","Invited Article" };
+    private readonly (string Name, string Type)[] _publishers = new (string, string)[]
+    {
+        ("ACS_Journals",        "Journal"),
+        ("AVES_Journals",       "Journal"),
+        ("Bloomsbury",          "Book"),
+        ("BMJ_Journals",        "Journal"),
+        ("Brill-Book",          "Book"),
+        ("CUP",                 "Book"),
+        ("CUP-Journals",        "Journal"),
+        ("DG-Book",             "Book"),
+        ("Elsevier-Book",       "Book"),
+        ("Elsevier-Journals",   "Journal"),
+        ("IntechOpen",          "Book"),
+        ("IntechOpen-Journals", "Journal"),
+        ("IOPP",                "Journal"),
+        ("KLI",                 "Journal"),
+        ("OUP-Books",           "Book"),
+        ("OUP-Journals",        "Journal"),
+        ("Pearson",             "Book"),
+        ("Springer",            "Book"),
+        ("Springer-Journals",   "Journal"),
+        ("TandF-Journals",      "Journal"),
+        ("TandF-Book",          "Book"),
+        ("WKH-Journals",        "Journal"),
+        ("WKI-Book",            "Book")
+    };
+
+    public class IPubEditMeta
+    {
+        public string XmlType { get; set; } = "Book";
+        public string Publisher { get; set; } = "";
+        public string JobCard { get; set; } = "0";
+        public string CeTemplate { get; set; } = "";
+        public string BookOrJournalId { get; set; } = "";
+        public bool Copyedit { get; set; } = false;
+        public bool PreEditing { get; set; }
+        public bool Testing { get; set; }
+        // Book fields
+        public string Dtd { get; set; } = "";
+        public string BookTitle { get; set; } = "";
+        public string Isbn { get; set; } = "";
+        public string Month { get; set; } = "";
+        public string Year { get; set; } = "";
+        public string PaginationPlatform { get; set; } = "";
+        public string Country { get; set; } = "None";
+        public string ArticleType { get; set; } = "";
+        public string Doi { get; set; } = "";
+        // Book-only additions: language + process type (default Book).
+        public string Language { get; set; } = "";
+        public string ProcessType { get; set; } = "Book";
+        // Journal fields
+        public string JournalName { get; set; } = "";
+        public string JournalTitle { get; set; } = "";
+        public string PIssn { get; set; } = "";
+        public string EIssn { get; set; } = "";
+        public string Copyrights { get; set; } = "";
+        public string PublisherImprint { get; set; } = "";
+        public string ArticleId { get; set; } = "";
+        public string DocumentType { get; set; } = "";
+    }
+
+    // ── Document-aware load: pulls metadata for the active tab from JS/localStorage ──
+    private async Task LoadMetadataForActiveTabAsync()
+    {
+        if (ActiveTab == null) return;
+        var tabId = ActiveTab.Id;
+        if (_metaByTab.TryGetValue(tabId, out var cached))
+        {
+            _meta = cached;
+            ApplyDateDefaults(_meta);
+            await RefreshCeTemplatesAsync();
+            return;
+        }
+        try
+        {
+            var saved = await JSRuntime.InvokeAsync<IPubEditMeta?>("loadIPubEditMeta", tabId.ToString());
+            _meta = saved ?? new IPubEditMeta();
+            ApplyDateDefaults(_meta);
+            _metaByTab[tabId] = _meta;
+            _metaLoadedTabs.Add(tabId);
+            if (saved != null)
+            {
+                // Auto-apply to editor so existing tokens get filled on open
+                try { await JSRuntime.InvokeVoidAsync("applyMetadata", _meta); } catch { }
+            }
+        }
+        catch
+        {
+            _meta = new IPubEditMeta();
+        }
+        await RefreshCeTemplatesAsync();
+    }
+
+    // Pre-fills Month + Year from the system clock when they're empty. Doesn't
+    // touch values the user (or a previous save) already set.
+    private static void ApplyDateDefaults(IPubEditMeta m)
+    {
+        var now = DateTime.Now;
+        if (string.IsNullOrWhiteSpace(m.Month))
+            m.Month = now.ToString("MMMM", System.Globalization.CultureInfo.InvariantCulture);
+        if (string.IsNullOrWhiteSpace(m.Year))
+            m.Year = now.Year.ToString();
+    }
+
+    // Pulls CE Template list for the current publisher from window.IPUB_CE_TEMPLATES
+    // via the ipubGetCeTemplates helper (handles UI-label -> Excel-sheet-key mapping
+    // for "Brill-Book" -> "BrillBook"). Empty list disables the dropdown.
+    private async Task RefreshCeTemplatesAsync()
+    {
+        if (string.IsNullOrEmpty(_meta.Publisher))
+        {
+            _ceTemplateOptions = new();
+            return;
+        }
+        try
+        {
+            var list = await JSRuntime.InvokeAsync<string[]?>("ipubGetCeTemplates", _meta.Publisher);
+            _ceTemplateOptions = list?.ToList() ?? new();
+        }
+        catch
+        {
+            _ceTemplateOptions = new();
+        }
+        // If the saved CeTemplate isn't valid for the current publisher, drop it.
+        if (!string.IsNullOrEmpty(_meta.CeTemplate) && !_ceTemplateOptions.Contains(_meta.CeTemplate))
+        {
+            _meta.CeTemplate = "";
+        }
+    }
+
+    // CE Template selected -> auto-fill Book ID with the same code.
+    private void OnCeTemplateChanged(ChangeEventArgs e)
+    {
+        var v = e.Value?.ToString() ?? "";
+        _meta.CeTemplate = v;
+        _meta.BookOrJournalId = v;
+        StateHasChanged();
+    }
+
+    // Adapters: IPubDropdown emits a plain string. Reuse the existing
+    // ChangeEventArgs-driven handlers without duplicating their logic.
+    private Task OnPublisherSelected(string v)
+        => OnPublisherChanged(new ChangeEventArgs { Value = v });
+
+    private void OnXmlTypeSelected(string v)
+        => OnXmlTypeChanged(new ChangeEventArgs { Value = string.IsNullOrEmpty(v) ? "Book" : v });
+
+    private void OnCeTemplateSelected(string v)
+        => OnCeTemplateChanged(new ChangeEventArgs { Value = v });
+
+    // ── Syncfusion adapters ──────────────────────────────────────────────
+    // SfDropDownList.ValueChange fires with ChangeEventArgs<TValue, TItem>.
+    // We unwrap and route into the canonical ChangeEventArgs-based handlers
+    // so business rules (publisher → XML type → CE template, autofill Book ID,
+    // mutual-exclusive checkboxes) live in exactly one place.
+    private Task OnPublisherSfChanged(
+        Syncfusion.Blazor.DropDowns.ChangeEventArgs<string, string> args)
+        => OnPublisherChanged(new ChangeEventArgs { Value = args.Value ?? "" });
+
+    private void OnXmlTypeSfChanged(
+        Syncfusion.Blazor.DropDowns.ChangeEventArgs<string, string> args)
+        => OnXmlTypeChanged(new ChangeEventArgs { Value = string.IsNullOrEmpty(args.Value) ? "Book" : args.Value });
+
+    private void OnCeTemplateSfChanged(
+        Syncfusion.Blazor.DropDowns.ChangeEventArgs<string, string> args)
+        => OnCeTemplateChanged(new ChangeEventArgs { Value = args.Value ?? "" });
+
+    // SfCheckBox.ValueChange args carry the new bool in args.Checked.
+    private void OnCopyeditSfChanged(Syncfusion.Blazor.Buttons.ChangeEventArgs<bool> args)
+        => OnCopyeditChanged(new ChangeEventArgs { Value = args.Checked });
+
+    private void OnPreEditingSfChanged(Syncfusion.Blazor.Buttons.ChangeEventArgs<bool> args)
+        => OnPreEditingChanged(new ChangeEventArgs { Value = args.Checked });
+
+    // Copyedit / Pre-Editing are mutually exclusive — checking one auto-clears the other.
+    // If both end up unchecked, CE Template + Book ID are hidden by the markup, and we
+    // also clear their values so a stale save doesn't leak.
+    private void OnCopyeditChanged(ChangeEventArgs e)
+    {
+        var on = e.Value is bool b && b;
+        _meta.Copyedit = on;
+        if (on) _meta.PreEditing = false;
+        if (!_meta.Copyedit && !_meta.PreEditing)
+        {
+            _meta.CeTemplate = "";
+            _meta.BookOrJournalId = "";
+        }
+        StateHasChanged();
+    }
+
+    private void OnPreEditingChanged(ChangeEventArgs e)
+    {
+        var on = e.Value is bool b && b;
+        _meta.PreEditing = on;
+        if (on) _meta.Copyedit = false;
+        if (!_meta.Copyedit && !_meta.PreEditing)
+        {
+            _meta.CeTemplate = "";
+            _meta.BookOrJournalId = "";
+        }
+        StateHasChanged();
+    }
+
+    // Publisher switcher — auto-derives XML Type (Book / Journal) from the chosen
+    // publisher's mapping. Reuses OnXmlTypeChanged's clearing logic so stale
+    // Book-only / Journal-only fields don't leak across the form switch.
+    private async Task OnPublisherChanged(ChangeEventArgs e)
+    {
+        var newPublisher = e.Value?.ToString() ?? "";
+        if (newPublisher == _meta.Publisher) return;
+        _meta.Publisher = newPublisher;
+        _metaErrors.Clear();
+
+        // CE Template list is publisher-scoped — drop stale selection + Book ID.
+        _meta.CeTemplate = "";
+        _meta.BookOrJournalId = "";
+        await RefreshCeTemplatesAsync();
+
+        var match = _publishers.FirstOrDefault(p =>
+            string.Equals(p.Name, newPublisher, StringComparison.OrdinalIgnoreCase));
+        if (!string.IsNullOrEmpty(match.Name) && match.Type != _meta.XmlType)
+        {
+            // Reuse the same form-clearing path the manual XML Type switch uses.
+            // OnXmlTypeChanged also applies the DTD default for the resolved type.
+            OnXmlTypeChanged(new ChangeEventArgs { Value = match.Type });
+            return;
+        }
+        // Same publisher *type* as before — apply the DTD default for this type.
+        // (Picked on publisher change so the user can still override DTD afterward.)
+        ApplyDefaultDtdForType(_meta.XmlType);
+        StateHasChanged();
+    }
+
+    // Auto-pick the conventional DTD for a given XML Type. User can override
+    // manually after this fires — we only set, never lock.
+    //   Book    → BITS
+    //   Journal → JATS
+    private void ApplyDefaultDtdForType(string xmlType)
+    {
+        _meta.Dtd = xmlType == "Book" ? "BITS" : "JATS";
+    }
+
+    // XML Type switcher — swaps the form shape and clears fields that don't belong
+    // to the new type so stale Book values don't leak into a Journal save (and vice versa).
+    private void OnXmlTypeChanged(ChangeEventArgs e)
+    {
+        var newType = e.Value?.ToString() ?? "Book";
+        if (newType == _meta.XmlType) return;
+        _meta.XmlType = newType;
+        _metaErrors.Clear();
+        // Auto-pick the conventional DTD whenever XML Type flips. User can
+        // still change it manually after the auto-fill.
+        ApplyDefaultDtdForType(newType);
+        if (newType == "Book")
+        {
+            // Clear Journal-only fields (Article Type + Document Type are Journal-only now;
+            // Book uses Language + Process Type instead).
+            _meta.JournalName = "";
+            _meta.JournalTitle = "";
+            _meta.PIssn = "";
+            _meta.EIssn = "";
+            _meta.Copyrights = "";
+            _meta.PublisherImprint = "";
+            _meta.ArticleId = "";
+            _meta.ArticleType = "";
+            _meta.DocumentType = "";
+            if (string.IsNullOrEmpty(_meta.Country)) _meta.Country = "None";
+            if (string.IsNullOrEmpty(_meta.ProcessType)) _meta.ProcessType = "Book";
+        }
+        else // Journal
+        {
+            // Clear Book-only fields
+            _meta.BookTitle = "";
+            _meta.Isbn = "";
+            _meta.Month = "";
+            _meta.Year = "";
+            _meta.Language = "";
+            _meta.ProcessType = "Book"; // keep model default
+        }
+        StateHasChanged();
+    }
+
+    private async Task OpenMetaDialog()
+    {
+        _metaErrors.Clear();
+        await LoadMetadataForActiveTabAsync();
+        _showMetaDialog = true;
+        StateHasChanged();
+    }
+
+    private void CloseMetaDialog()
+    {
+        _showMetaDialog = false;
+        _metaErrors.Clear();
+    }
+
+    // Validate required fields based on XML Type. Collects ALL errors into _metaErrors
+    // (keyed by field name) so every invalid field can show its own inline message.
+    private bool ValidateMetadata()
+    {
+        _metaErrors.Clear();
+        if (string.IsNullOrWhiteSpace(_meta.Publisher))
+            _metaErrors["Publisher"] = "Publisher Name is required.";
+        if (_meta.XmlType == "Book")
+        {
+            if (!string.IsNullOrWhiteSpace(_meta.Isbn)
+                && !System.Text.RegularExpressions.Regex.IsMatch(_meta.Isbn.Replace("-",""), @"^\d{10}(\d{3})?$"))
+                _metaErrors["Isbn"] = "ISBN must be 10 or 13 digits.";
+            if (!string.IsNullOrWhiteSpace(_meta.Year)
+                && !System.Text.RegularExpressions.Regex.IsMatch(_meta.Year, @"^\d{4}$"))
+                _metaErrors["Year"] = "Year must be a 4-digit number.";
+        }
+        else // Journal
+        {
+            if (string.IsNullOrWhiteSpace(_meta.JournalName))
+                _metaErrors["JournalName"] = "Journal Name is required.";
+            if (string.IsNullOrWhiteSpace(_meta.JournalTitle))
+                _metaErrors["JournalTitle"] = "Journal Title is required.";
+            if (string.IsNullOrWhiteSpace(_meta.PIssn))
+                _metaErrors["PIssn"] = "P-ISSN is required.";
+            if (string.IsNullOrWhiteSpace(_meta.Dtd))
+                _metaErrors["Dtd"] = "DTD is required.";
+            if (string.IsNullOrWhiteSpace(_meta.PublisherImprint))
+                _metaErrors["PublisherImprint"] = "Publisher Imprint is required.";
+        }
+        if (!string.IsNullOrWhiteSpace(_meta.Doi)
+            && !_meta.Doi.StartsWith("10.", StringComparison.OrdinalIgnoreCase))
+            _metaErrors["Doi"] = "DOI must begin with \"10.\" (e.g. 10.1234/abcd).";
+        return _metaErrors.Count == 0;
+    }
+
+    private async Task SaveMetadata()
+    {
+        if (!ValidateMetadata())
+        {
+            // Single toast for the whole form — per-field messages render inline below each input.
+            SetStatus($"⚠ Please fix {_metaErrors.Count} highlighted field(s).", true);
+            StateHasChanged();
+            return;
+        }
+        _metaErrors.Clear();
+
+        if (ActiveTab == null)
+        {
+            SetStatus("❌ No active document", true);
+            return;
+        }
+        var tabId = ActiveTab.Id;
+
+        try
+        {
+            // Persist per-document via JS (localStorage keyed by tabId)
+            var ok = await JSRuntime.InvokeAsync<bool>("saveIPubEditMeta", tabId.ToString(), _meta);
+            if (!ok)
+            {
+                SetStatus("❌ Metadata save failed", true);
+                return;
+            }
+            // Update in-memory cache
+            _metaByTab[tabId] = _meta;
+            _metaLoadedTabs.Add(tabId);
+
+            // Bind to editor (token replacement + future content controls)
+            try { await JSRuntime.InvokeVoidAsync("applyMetadata", _meta); } catch { }
+
+            SetStatus("✅ Metadata saved", false);
+            Console.WriteLine("[iPubEdit] " + System.Text.Json.JsonSerializer.Serialize(_meta));
+
+            // Persist updated metadata back into the DOCX customXml (iCore part).
+            // Best-effort: errors are logged but don't block the dialog from closing.
+            try
+            {
+                Console.WriteLine($"[SaveMetadata] Triggering customXml write-back for tab {tabId}");
+                var dtoJson = System.Text.Json.JsonSerializer.Serialize(_meta);
+                var result = await JSRuntime.InvokeAsync<string>("updateCustomXmlForActiveTab", tabId.ToString(), dtoJson);
+                Console.WriteLine($"[SaveMetadata] updateCustomXmlForActiveTab result = '{result}'");
+                switch (result)
+                {
+                    case "OK":
+                        SetStatus("✅ Metadata saved & DOCX updated", false);
+                        break;
+                    case "NO_HANDLE":
+                        Console.WriteLine("[SaveMetadata] No file handle — DOCX not updated on disk (file likely opened via upload).");
+                        break;
+                    case "PERMISSION_DENIED":
+                        SetStatus("⚠ Metadata saved, but write permission was denied — DOCX not updated.", true);
+                        break;
+                    case "DELETED":
+                        SetStatus("⚠ Metadata saved, but the source DOCX is missing on disk.", true);
+                        break;
+                    default:
+                        if (result?.StartsWith("ERROR:") == true)
+                            Console.WriteLine($"[SaveMetadata] customXml update error: {result}");
+                        break;
+                }
+            }
+            catch (Exception cxmlEx)
+            {
+                Console.WriteLine($"[SaveMetadata] customXml write-back EXCEPTION: {cxmlEx.Message}");
+            }
+        }
+        catch (Exception ex)
+        {
+            SetStatus($"❌ {ex.Message}", true);
+            return;
+        }
+        _showMetaDialog = false;
+        StateHasChanged();
+    }
+
     // ── File Not Found modal state ───────────────────────────────────────────
     private bool   _showFileNotFoundModal = false;
     private string _missingFileName       = string.Empty;
@@ -1093,6 +1979,20 @@ public async Task OpenFileDirect()
             await LoadRecentFiles();
         }
         await JSRuntime.InvokeVoidAsync("setDocumentName", _currentFileName ?? "Untitled.docx");
+
+        // Sync injected ribbon header button states (safe — may not exist yet on first render)
+        try
+        {
+            await JSRuntime.InvokeVoidAsync("syncRibbonHeader", new
+            {
+                isDark = _isDarkMode,
+                navPaneOpen = _navPaneOpen,
+                chatOpen = _chatOpen,
+                leftPaneOpen = _leftPaneOpen,
+                manuscriptProcessing = _manuscriptProcessing
+            });
+        }
+        catch (JSException) { /* syncRibbonHeader not available yet */ }
     }
 
     // ── JSInvokable callbacks ────────────────────────────────────────────────
@@ -1101,7 +2001,47 @@ public async Task OpenFileDirect()
     [JSInvokable] public Task OnSlashTyped(double x, double y) { _slashPickerX = x; _slashPickerY = Math.Max(8, y - 275); _slashActiveIdx = 0; _slashPickerVisible = true; StateHasChanged(); return Task.CompletedTask; }
     [JSInvokable] public async Task NewTabFromJS() => await NewTab();
     [JSInvokable] public async Task OpenFileFromJS() => await OpenFileDialog();
-     [JSInvokable] public void OnFileOpenedFromJS(string fileName) { if (ActiveTab != null) { ActiveTab.FileName = fileName; ActiveTab.IsEmpty = false; ActiveTab.IsModified = false; StateHasChanged(); } }
+    [JSInvokable]
+    public async Task OnFileOpenedFromJS(string fileName)
+    {
+        if (ActiveTab == null) return;
+        var tabId = ActiveTab.Id;
+
+        ActiveTab.FileName = fileName;
+        ActiveTab.IsEmpty = false;
+        ActiveTab.IsModified = false;
+
+        // New file in this tab → drop stale metadata cached under the same tabId
+        // (both the in-memory cache and the per-tab localStorage entry).
+        _metaByTab.Remove(tabId);
+        _metaLoadedTabs.Remove(tabId);
+        _meta = new IPubEditMeta();
+        try { await JSRuntime.InvokeVoidAsync("deleteIPubEditMeta", tabId.ToString()); } catch { }
+
+        StateHasChanged();
+        await LoadMetadataForActiveTabAsync();
+        StateHasChanged();
+    }
+    [JSInvokable]
+    public async Task OnIPubMetaExtractedFromJS(IPubMetaDto? dto)
+    {
+        Console.WriteLine("[OnIPubMetaExtractedFromJS] ===== START =====");
+        if (dto == null)
+        {
+            Console.WriteLine("[OnIPubMetaExtractedFromJS] DTO is null — nothing to apply.");
+            Console.WriteLine("[OnIPubMetaExtractedFromJS] ===== END =====");
+            return;
+        }
+        if (ActiveTab == null)
+        {
+            Console.WriteLine("[OnIPubMetaExtractedFromJS] No active tab — skipping.");
+            Console.WriteLine("[OnIPubMetaExtractedFromJS] ===== END =====");
+            return;
+        }
+        Console.WriteLine($"[OnIPubMetaExtractedFromJS] DTO: Publisher='{dto.Publisher}' BookTitle='{dto.BookTitle}' Isbn='{dto.Isbn}' Doi='{dto.Doi}' JournalName='{dto.JournalName}'");
+        await ApplyExtractedMetaAsync(ActiveTab, dto);
+        Console.WriteLine("[OnIPubMetaExtractedFromJS] ===== END =====");
+    }
 [JSInvokable] public async Task OnSaveShortcut() => await SaveDocument();
     [JSInvokable] public async Task OnSaveAsShortcut() { } // handled by JS directly
     [JSInvokable] public async Task OnSaveAsCompleted(string result)
@@ -1285,8 +2225,15 @@ StateHasChanged();
         SetStatus("⏳ Opening document…", false);
         try
         {
-            using var stream = file.OpenReadStream(maxAllowedSize: 104_857_600);
-            var sfdt = await DocumentService.ImportAsync(stream, file.Name, file.Size);
+            // Buffer once so we can feed the same bytes to import + customXml extract
+            using var buf = new MemoryStream();
+            using (var stream = file.OpenReadStream(maxAllowedSize: 104_857_600))
+            {
+                await stream.CopyToAsync(buf);
+            }
+            buf.Position = 0;
+
+            var sfdt = await DocumentService.ImportAsync(buf, file.Name, buf.Length);
             var fileName = file.Name; // Keep original name and extension
             var activeTab = ActiveTab; DocTab targetTab;
             if (activeTab != null && activeTab.IsEmpty) { targetTab = activeTab; }
@@ -1298,8 +2245,159 @@ StateHasChanged();
             await JSRuntime.InvokeVoidAsync("loadDocument", sfdt);
             await StartAutoSaveForActiveTab(); await PushRecentFile(fileName);
             SetStatus($"✅ Opened: {file.Name}", false); StateHasChanged();
+
+            // Best-effort: pull iPubEdit metadata from customXml. Errors swallowed.
+            Console.WriteLine($"[HandleFileUpload] customXml-extract gate: ext={ext}");
+            if (ext == ".docx")
+            {
+                Console.WriteLine($"[HandleFileUpload] Calling ExtractIPubMetaAsync (buffer={buf.Length} bytes, tab={targetTab.Id})");
+                try
+                {
+                    buf.Position = 0;
+                    var dto = await DocumentService.ExtractIPubMetaAsync(buf);
+                    Console.WriteLine($"[HandleFileUpload] ExtractIPubMetaAsync returned: {(dto == null ? "null" : "DTO")}");
+                    if (dto != null)
+                    {
+                        Console.WriteLine($"[HandleFileUpload] DTO summary: Publisher='{dto.Publisher}' BookTitle='{dto.BookTitle}' Isbn='{dto.Isbn}' Doi='{dto.Doi}' JournalName='{dto.JournalName}'");
+                        await ApplyExtractedMetaAsync(targetTab, dto);
+                    }
+                    else
+                    {
+                        Console.WriteLine("[HandleFileUpload] No metadata DTO — skipping apply step.");
+                    }
+                }
+                catch (Exception metaEx)
+                {
+                    Console.WriteLine($"[HandleFileUpload] [ExtractMeta] EXCEPTION: {metaEx.GetType().Name}: {metaEx.Message}");
+                }
+            }
+            else
+            {
+                Console.WriteLine($"[HandleFileUpload] Skipping customXml extraction (ext != .docx)");
+            }
         }
         catch (Exception ex) { SetStatus($"❌ {ex.Message}", true); }
+    }
+
+    // Merges customXml-extracted metadata into the tab's IPubEditMeta only if
+    // the user hasn't already saved metadata for that tab. Persists via the
+    // existing JS localStorage helpers and applies tokens to the editor.
+    // Mirrors of the inlined SfDropDownList option lists — used only to warn
+    // when an extracted customXml value cannot be displayed by the dropdown.
+    private static readonly string[] _knownDtdOptions             = { "DocBook", "BITS", "JATS", "DG-BITS" };
+    private static readonly string[] _knownCountryOptions         = { "None", "US", "UK", "IN" };
+    private static readonly string[] _knownPaginationPlatformOptions = { "ThreeB2", "InDesign", "LaTeX" };
+    private static readonly string[] _knownProcessTypeOptions     = { "Book", "Chapter" };
+    private static readonly string[] _knownXmlTypeOptions         = { "Book", "Journal" };
+    private static readonly string[] _knownArticleTypeOptions     = { "Article", "Un-Article" };
+
+    private static void WarnIfUnmatchedDropdownValue(string field, string? value, IEnumerable<string> options)
+    {
+        if (string.IsNullOrEmpty(value)) return;
+        var arr = options as string[] ?? options.ToArray();
+        if (arr.Any(o => string.Equals(o, value, StringComparison.OrdinalIgnoreCase))) return;
+        var preview = string.Join(", ", arr.Take(6));
+        var more = arr.Length > 6 ? ", ..." : "";
+        Console.WriteLine($"[ApplyExtractedMeta] [unmatched-option] {field}='{value}' not in known options [{preview}{more}]");
+    }
+
+    private async Task ApplyExtractedMetaAsync(DocTab tab, IPubMetaDto dto)
+    {
+        Console.WriteLine($"[ApplyExtractedMeta] ===== START tab={tab.Id} =====");
+        try
+        {
+            Console.WriteLine($"[ApplyExtractedMeta] Checking localStorage for existing meta on tab {tab.Id}...");
+            var existing = await JSRuntime.InvokeAsync<IPubEditMeta?>("loadIPubEditMeta", tab.Id.ToString());
+            if (existing != null)
+            {
+                Console.WriteLine($"[ApplyExtractedMeta] Existing user-saved meta found (Publisher='{existing.Publisher}'). Skipping auto-fill to preserve user edits.");
+                Console.WriteLine("[ApplyExtractedMeta] ===== END (skipped) =====");
+                return;
+            }
+            Console.WriteLine("[ApplyExtractedMeta] No existing meta — proceeding to merge DTO.");
+
+            var meta = new IPubEditMeta();
+            MergeDtoIntoMeta(dto, meta);
+            ApplyDateDefaults(meta);
+            Console.WriteLine($"[ApplyExtractedMeta] Merged meta: Publisher='{meta.Publisher}' BookTitle='{meta.BookTitle}' Isbn='{meta.Isbn}' Doi='{meta.Doi}' JournalName='{meta.JournalName}' Year='{meta.Year}' Month='{meta.Month}'");
+
+            // Warn when extracted customXml values don't match any known dropdown option.
+            // The model still holds the value; only the dropdown UI can't display it.
+            WarnIfUnmatchedDropdownValue("Dtd",                meta.Dtd,                _knownDtdOptions);
+            WarnIfUnmatchedDropdownValue("Country",            meta.Country,            _knownCountryOptions);
+            WarnIfUnmatchedDropdownValue("PaginationPlatform", meta.PaginationPlatform, _knownPaginationPlatformOptions);
+            WarnIfUnmatchedDropdownValue("ProcessType",        meta.ProcessType,        _knownProcessTypeOptions);
+            WarnIfUnmatchedDropdownValue("XmlType",            meta.XmlType,            _knownXmlTypeOptions);
+            WarnIfUnmatchedDropdownValue("ArticleType",        meta.ArticleType,        _knownArticleTypeOptions);
+            WarnIfUnmatchedDropdownValue("Language",           meta.Language,           _languages);
+            WarnIfUnmatchedDropdownValue("Month",              meta.Month,              _months);
+            WarnIfUnmatchedDropdownValue("DocumentType",       meta.DocumentType,       _documentTypes);
+            WarnIfUnmatchedDropdownValue("Publisher",          meta.Publisher,          _publisherNames);
+            // CeTemplate options are loaded async per publisher (RefreshCeTemplatesAsync
+            // fires below) — warn check is deferred to after that call.
+
+            _metaByTab[tab.Id] = meta;
+            _metaLoadedTabs.Add(tab.Id);
+            if (tab.Id == _activeTabId)
+            {
+                _meta = meta;
+                Console.WriteLine("[ApplyExtractedMeta] Active tab — bound _meta and calling StateHasChanged().");
+                StateHasChanged();
+            }
+            else
+            {
+                Console.WriteLine($"[ApplyExtractedMeta] Not active tab (active={_activeTabId}) — cached only.");
+            }
+
+            try { await JSRuntime.InvokeVoidAsync("saveIPubEditMeta", tab.Id.ToString(), meta); Console.WriteLine("[ApplyExtractedMeta] saveIPubEditMeta OK"); }
+            catch (Exception saveEx) { Console.WriteLine($"[ApplyExtractedMeta] saveIPubEditMeta failed: {saveEx.Message}"); }
+
+            try { await JSRuntime.InvokeVoidAsync("applyMetadata", meta); Console.WriteLine("[ApplyExtractedMeta] applyMetadata OK"); }
+            catch (Exception applyEx) { Console.WriteLine($"[ApplyExtractedMeta] applyMetadata failed: {applyEx.Message}"); }
+
+            await RefreshCeTemplatesAsync();
+            Console.WriteLine("[ApplyExtractedMeta] RefreshCeTemplatesAsync done.");
+            // CeTemplate options are now populated for the chosen Publisher.
+            if (_ceTemplateOptions.Count > 0)
+                WarnIfUnmatchedDropdownValue("CeTemplate", meta.CeTemplate, _ceTemplateOptions);
+            Console.WriteLine("[ApplyExtractedMeta] ===== END =====");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[ApplyExtractedMeta] EXCEPTION: {ex.GetType().Name}: {ex.Message}");
+            Console.WriteLine("[ApplyExtractedMeta] ===== END (exception) =====");
+        }
+    }
+
+    private static void MergeDtoIntoMeta(IPubMetaDto d, IPubEditMeta m)
+    {
+        if (!string.IsNullOrWhiteSpace(d.XmlType))            m.XmlType = d.XmlType!;
+        if (!string.IsNullOrWhiteSpace(d.Publisher))          m.Publisher = d.Publisher!;
+        if (!string.IsNullOrWhiteSpace(d.JobCard))            m.JobCard = d.JobCard!;
+        if (!string.IsNullOrWhiteSpace(d.CeTemplate))         m.CeTemplate = d.CeTemplate!;
+        if (!string.IsNullOrWhiteSpace(d.BookOrJournalId))    m.BookOrJournalId = d.BookOrJournalId!;
+        if (d.Copyedit.HasValue)                              m.Copyedit = d.Copyedit.Value;
+        if (d.PreEditing.HasValue)                            m.PreEditing = d.PreEditing.Value;
+        if (d.Testing.HasValue)                               m.Testing = d.Testing.Value;
+        if (!string.IsNullOrWhiteSpace(d.Dtd))                m.Dtd = d.Dtd!;
+        if (!string.IsNullOrWhiteSpace(d.BookTitle))          m.BookTitle = d.BookTitle!;
+        if (!string.IsNullOrWhiteSpace(d.Isbn))               m.Isbn = d.Isbn!;
+        if (!string.IsNullOrWhiteSpace(d.Month))              m.Month = d.Month!;
+        if (!string.IsNullOrWhiteSpace(d.Year))               m.Year = d.Year!;
+        if (!string.IsNullOrWhiteSpace(d.PaginationPlatform)) m.PaginationPlatform = d.PaginationPlatform!;
+        if (!string.IsNullOrWhiteSpace(d.Country))            m.Country = d.Country!;
+        if (!string.IsNullOrWhiteSpace(d.ArticleType))        m.ArticleType = d.ArticleType!;
+        if (!string.IsNullOrWhiteSpace(d.Doi))                m.Doi = d.Doi!;
+        if (!string.IsNullOrWhiteSpace(d.Language))           m.Language = d.Language!;
+        if (!string.IsNullOrWhiteSpace(d.ProcessType))        m.ProcessType = d.ProcessType!;
+        if (!string.IsNullOrWhiteSpace(d.JournalName))        m.JournalName = d.JournalName!;
+        if (!string.IsNullOrWhiteSpace(d.JournalTitle))       m.JournalTitle = d.JournalTitle!;
+        if (!string.IsNullOrWhiteSpace(d.PIssn))              m.PIssn = d.PIssn!;
+        if (!string.IsNullOrWhiteSpace(d.EIssn))              m.EIssn = d.EIssn!;
+        if (!string.IsNullOrWhiteSpace(d.Copyrights))         m.Copyrights = d.Copyrights!;
+        if (!string.IsNullOrWhiteSpace(d.PublisherImprint))   m.PublisherImprint = d.PublisherImprint!;
+        if (!string.IsNullOrWhiteSpace(d.ArticleId))          m.ArticleId = d.ArticleId!;
+        if (!string.IsNullOrWhiteSpace(d.DocumentType))       m.DocumentType = d.DocumentType!;
     }
 
     // ═════════════════════════════════════════════════════════════════════════
@@ -1646,6 +2744,12 @@ private async Task SwitchTab(Guid tabId)
             ResetSchemaFields();
         else
             _schemaFields = new();
+
+        // Auto-load metadata for the newly active tab (and apply to editor).
+        // Awaited so a click on iPubEdit Meta immediately after a tab switch
+        // can never see the previous tab's _meta.
+        await LoadMetadataForActiveTabAsync();
+
         StateHasChanged();
     }
 

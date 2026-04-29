@@ -1,3 +1,5 @@
+using Deditor.Core.Models;
+
 namespace Deditor.Core.Services.Interfaces
 {
     /// <summary>
@@ -27,5 +29,21 @@ namespace Deditor.Core.Services.Interfaces
         /// Process a metafile/image service request from the Syncfusion editor.
         /// </summary>
         string ServiceBase(string? imageData, string? action);
+
+        /// <summary>
+        /// Extract iPubEdit metadata from the customXml parts of a DOCX file.
+        /// Returns null if the file has no customXml or no recognized fields.
+        /// Best-effort: any extraction error is swallowed and returns null.
+        /// </summary>
+        Task<IPubMetaDto?> ExtractIPubMetaAsync(Stream docxStream);
+
+        /// <summary>
+        /// Write iPubEdit metadata back into the customXml parts of a DOCX file.
+        /// Updates the iCore part (root element local-name = "icore"), preferring
+        /// /customXml/item3.xml when multiple parts exist. Existing elements get
+        /// new text; missing elements are appended to the root. Original DOCX is
+        /// returned unchanged on failure or when no iCore part is found.
+        /// </summary>
+        Task<byte[]> UpdateIPubCustomXmlAsync(byte[] docxBytes, IPubMetaDto dto);
     }
 }

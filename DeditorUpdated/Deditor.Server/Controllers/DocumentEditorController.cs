@@ -45,6 +45,101 @@ namespace Deditor.Server.Controllers
             }
         }
 
+        [DisableRequestSizeLimit]
+        [RequestFormLimits(MultipartBodyLengthLimit = long.MaxValue)]
+        [HttpPost("extract-metadata")]
+        public async Task<IActionResult> ExtractMetadata(IFormFile files)
+        {
+            Console.WriteLine("[ExtractMetadata] ===== START endpoint =====");
+            if (files == null || files.Length == 0)
+            {
+                Console.WriteLine("[ExtractMetadata] No file received. 400.");
+                Console.WriteLine("[ExtractMetadata] ===== END =====");
+                return BadRequest("No file received.");
+            }
+            Console.WriteLine($"[ExtractMetadata] file='{files.FileName}' size={files.Length} bytes");
+            try
+            {
+                using var ms = new MemoryStream();
+                await files.CopyToAsync(ms);
+                ms.Position = 0;
+                Console.WriteLine($"[ExtractMetadata] Buffered {ms.Length} bytes. Calling ExtractIPubMetaAsync...");
+                var dto = await _documentService.ExtractIPubMetaAsync(ms);
+                if (dto == null)
+                {
+                    Console.WriteLine("[ExtractMetadata] DTO is null — returning 204 NoContent.");
+                    Console.WriteLine("[ExtractMetadata] ===== END =====");
+                    return NoContent();
+                }
+                Console.WriteLine("[ExtractMetadata] DTO returned — sending 200 OK with JSON.");
+                Console.WriteLine("[ExtractMetadata] ===== END =====");
+                return Ok(dto);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[ExtractMetadata] ERROR: {ex}");
+                Console.WriteLine("[ExtractMetadata] ===== END (exception) =====");
+                return StatusCode(500, $"Extract error: {ex.Message}");
+            }
+        }
+
+        [DisableRequestSizeLimit]
+        [RequestFormLimits(MultipartBodyLengthLimit = long.MaxValue)]
+        [HttpPost("update-customxml")]
+        public async Task<IActionResult> UpdateCustomXml([FromForm] IFormFile files, [FromForm] string dto)
+        {
+            Console.WriteLine("[UpdateCustomXml] ===== START endpoint =====");
+            if (files == null || files.Length == 0)
+            {
+                Console.WriteLine("[UpdateCustomXml] No file received. 400.");
+                return BadRequest("No file received.");
+            }
+            if (string.IsNullOrWhiteSpace(dto))
+            {
+                Console.WriteLine("[UpdateCustomXml] No DTO JSON. 400.");
+                return BadRequest("No metadata DTO received.");
+            }
+            Console.WriteLine($"[UpdateCustomXml] file='{files.FileName}' size={files.Length}, dto length={dto.Length}");
+
+            IPubMetaDto? parsed;
+            try
+            {
+                parsed = System.Text.Json.JsonSerializer.Deserialize<IPubMetaDto>(dto,
+                    new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+            }
+            catch (Exception jsonEx)
+            {
+                Console.WriteLine($"[UpdateCustomXml] DTO parse failed: {jsonEx.Message}");
+                return BadRequest("Invalid DTO JSON.");
+            }
+            if (parsed == null)
+            {
+                Console.WriteLine("[UpdateCustomXml] Parsed DTO is null.");
+                return BadRequest("Invalid DTO.");
+            }
+
+            try
+            {
+                using var ms = new MemoryStream();
+                await files.CopyToAsync(ms);
+                var inBytes = ms.ToArray();
+                Console.WriteLine($"[UpdateCustomXml] Buffered {inBytes.Length} bytes. Calling UpdateIPubCustomXmlAsync...");
+
+                var outBytes = await _documentService.UpdateIPubCustomXmlAsync(inBytes, parsed);
+                Console.WriteLine($"[UpdateCustomXml] Service returned {outBytes.Length} bytes. Sending file response.");
+                Console.WriteLine("[UpdateCustomXml] ===== END =====");
+                return File(outBytes,
+                    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                    files.FileName);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[UpdateCustomXml] ERROR: {ex}");
+                Console.WriteLine("[UpdateCustomXml] ===== END (exception) =====");
+                return StatusCode(500, $"UpdateCustomXml error: {ex.Message}");
+            }
+        }
+
         [HttpPost("save")]
         public IActionResult Save([FromBody] SaveParameter data)
         {

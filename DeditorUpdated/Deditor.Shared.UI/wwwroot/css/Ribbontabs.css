@@ -4,7 +4,32 @@
 
 /* ── LIGHT MODE ─────────────────────────────────────── */
 .e-de-ctn { background: #F4F3F0 !important; }
-.e-de-ctnr-ribbon { background: #F4F3F0 !important; }
+
+/* ── Fixed ribbon spanning full viewport width ── */
+.e-de-ctnr-ribbon {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    z-index: 100 !important;
+    background: #F4F3F0 !important;
+    border-bottom: 1px solid var(--n-border, #D6D4CF) !important;
+}
+/* Push editor content below the fixed ribbon */
+.e-de-ctn {
+    display: flex !important;
+    flex-direction: column !important;
+    height: 100% !important;
+    padding-top: var(--n-ribbon-h, 89px) !important;
+}
+.e-de-ctn > .e-de-ribbon-simplified-ctnr-properties-pane,
+.e-de-ctn > .e-de-ribbon-classic-ctnr-properties-pane {
+    flex: 1 !important;
+    min-height: 0 !important;
+}
+.e-de-ctn > .e-de-status-bar {
+    flex-shrink: 0 !important;
+}
 
 .e-de-ctnr-ribbon .e-ribbon .e-tab-header,
 .e-de-ctnr-ribbon .e-ribbon .e-tab-header .e-toolbar-items,
@@ -28,8 +53,47 @@
 }
 
 /* ══════════════════════════════════════════════════════
-   CENTER TABS + HIDE BROKEN INDICATOR
+   UNIFIED HEADER — 3-column layout: logo | tabs | buttons
 ══════════════════════════════════════════════════════ */
+
+/* Hide bare ribbon until logo/buttons are injected (prevents flash) */
+/* Target only the outer .e-ribbon > .e-ribbon-tab (not .e-tab-header which also has .e-ribbon-tab class) */
+.e-ribbon > .e-ribbon-tab:not(:has(.n-ribbon-header-row)) {
+    opacity: 0 !important;
+}
+
+/* Wrapper row for [Logo] [File] [tab-header] — injected by JS */
+.n-ribbon-header-row {
+    display: flex !important;
+    align-items: center !important;
+    flex-wrap: nowrap !important;
+}
+
+/* Override Syncfusion's absolute positioning for File button and tab-header inside our row */
+.n-ribbon-header-row > .e-ribbon-file-menu {
+    position: static !important;
+    flex-shrink: 0 !important;
+}
+.n-ribbon-header-row > .e-tab-header {
+    position: static !important;
+    left: auto !important;
+}
+
+.e-tab-header,
+.e-ribbon .e-tab-header,
+.e-de-ctnr-ribbon .e-ribbon .e-tab-header,
+.e-de-ribbon .e-tab-header {
+    display: flex !important;
+    align-items: center !important;
+    min-height: 44px !important;
+}
+
+/* Inside the header row, tab-header takes remaining space */
+.n-ribbon-header-row > .e-tab-header {
+    flex: 1 !important;
+    min-width: 0 !important;
+}
+
 .e-ribbon-tab > .e-tab-header > .e-toolbar-items,
 .e-de-ctnr-ribbon .e-ribbon .e-tab-header > .e-toolbar-items,
 .e-de-ribbon .e-tab-header > .e-toolbar-items,
@@ -37,7 +101,15 @@
     display: flex !important;
     justify-content: center !important;
     align-items: center !important;
-    width: 100% !important;
+    flex: 1 1 0% !important;
+    min-width: 0 !important;
+    overflow-x: auto !important;
+    overflow-y: hidden !important;
+    scrollbar-width: none !important;
+    gap: 0 !important;
+}
+.e-ribbon .e-tab-header > .e-toolbar-items::-webkit-scrollbar {
+    display: none;
 }
 
 .e-ribbon-tab > .e-tab-header .e-toolbar-item,
@@ -45,10 +117,101 @@
 .e-de-ribbon .e-tab-header .e-toolbar-item,
 .e-ribbon .e-tab-header .e-toolbar-item {
     float: none !important;
+    flex-shrink: 0 !important;
+    margin: 0 !important;
+}
+
+/* Compact tab labels */
+.e-tab-header .e-toolbar-item .e-tab-wrap {
+    padding: 6px 3px !important;
+}
+.e-ribbon.e-rbn .e-ribbon-tab .e-tab-header .e-toolbar-item .e-tab-text {
+    font-size: 14px;
+    font-weight: 400;
+    line-height: 22px;
+    padding: 10px 8px !important;
+    text-transform: none;
+    margin: 0;
+}
+
+.e-tab-header .e-toolbar-item .e-tab-text {
+    
+    white-space: nowrap !important;
 }
 
 .e-tab-header .e-toolbar-item.e-ribbon-contextual-tab.e-hidden {
     display: none !important;
+}
+
+/* ══════════════════════════════════════════════════════
+   CONTEXTUAL TABS — same style as regular tabs
+══════════════════════════════════════════════════════ */
+/* Remove Syncfusion's colored top border on contextual tabs */
+.e-ribbon-contextual-tab::before,
+.e-toolbar-item.e-ribbon-contextual-tab::before,
+.e-toolbar-item.e-ribbon-contextual-tab::after {
+    display: none !important;
+}
+/* Force contextual tab item + wrap to match regular tab background */
+.e-toolbar-item.e-ribbon-contextual-tab {
+    background: #F4F3F0 !important;
+}
+.e-toolbar-item.e-ribbon-contextual-tab .e-tab-wrap {
+    background: transparent !important;
+    border-color: transparent !important;
+}
+.e-toolbar-item.e-ribbon-contextual-tab.e-active .e-tab-wrap {
+    background: #FFFFFF !important;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.06) !important;
+    border-radius: 4px !important;
+}
+.e-toolbar-item.e-ribbon-contextual-tab .e-tab-text,
+.e-toolbar-item.e-ribbon-contextual-tab .e-tab-text span {
+    color: #8A877F !important;
+    font-weight: 450 !important;
+}
+.e-toolbar-item.e-ribbon-contextual-tab.e-active .e-tab-text,
+.e-toolbar-item.e-ribbon-contextual-tab.e-active .e-tab-text span {
+    color: #2C2B27 !important;
+    font-weight: 600 !important;
+}
+.e-toolbar-item.e-ribbon-contextual-tab:not(.e-active) .e-tab-wrap:hover {
+    background: #E8E5E0 !important;
+    border-radius: 6px !important;
+}
+/* Contextual tab content panels — same background as regular panels */
+.e-ribbon-contextual-tab-item,
+.e-ribbon .e-content .e-ribbon-contextual-tab-item {
+    background: #F4F3F0 !important;
+}
+
+/* ── Dark mode contextual tab overrides ── */
+[data-theme="dark"] .e-toolbar-item.e-ribbon-contextual-tab {
+    background: #252320 !important;
+}
+[data-theme="dark"] .e-toolbar-item.e-ribbon-contextual-tab .e-tab-wrap {
+    background: transparent !important;
+    border-color: transparent !important;
+}
+[data-theme="dark"] .e-toolbar-item.e-ribbon-contextual-tab.e-active .e-tab-wrap {
+    background: #3A3733 !important;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.2) !important;
+}
+[data-theme="dark"] .e-toolbar-item.e-ribbon-contextual-tab .e-tab-text,
+[data-theme="dark"] .e-toolbar-item.e-ribbon-contextual-tab .e-tab-text span {
+    color: #7D7870 !important;
+}
+[data-theme="dark"] .e-toolbar-item.e-ribbon-contextual-tab.e-active .e-tab-text,
+[data-theme="dark"] .e-toolbar-item.e-ribbon-contextual-tab.e-active .e-tab-text span {
+    color: #E8E6E1 !important;
+    font-weight: 600 !important;
+}
+[data-theme="dark"] .e-toolbar-item.e-ribbon-contextual-tab:not(.e-active) .e-tab-wrap:hover {
+    background: #33312E !important;
+}
+[data-theme="dark"] .e-ribbon-contextual-tab-item,
+[data-theme="dark"] .e-ribbon .e-content .e-ribbon-contextual-tab-item {
+    background: #43403d !important;
 }
 
 .e-tab-header .e-indicator,
@@ -74,11 +237,11 @@
     font-weight: 600 !important;
 }
 
-/* Inactive tabs — muted */
+/* Inactive tabs — muted (WCAG AA: ~6.3:1 on #F4F3F0) */
 .e-tab-header .e-toolbar-item:not(.e-active) .e-tab-text,
 .e-tab-header .e-toolbar-item:not(.e-active) .e-tab-text span {
-    color: #8A877F !important;
-    font-weight: 450 !important;
+    color: #5A5750 !important;
+    font-weight: 500 !important;
 }
 
 /* Hover — subtle bg */
@@ -93,9 +256,12 @@
 
 /* Outer container */
 [data-theme="dark"] .e-de-ctn,
-[data-theme="dark"] .e-de-ctnr-ribbon,
 [data-theme="dark"] .e-de-ribbon-classic-ctnr-properties-pane {
     background: #2B2927 !important;
+}
+[data-theme="dark"] .e-de-ctnr-ribbon {
+    background: #2B2927 !important;
+    border-bottom-color: #4A4744 !important;
 }
 
 /* Tab strip — darker */
@@ -122,10 +288,11 @@
     font-weight: 600 !important;
 }
 
-/* Dark — inactive */
+/* Dark — inactive (WCAG AA: ~6.7:1 on #252320) */
 [data-theme="dark"] .e-tab-header .e-toolbar-item:not(.e-active) .e-tab-text,
 [data-theme="dark"] .e-tab-header .e-toolbar-item:not(.e-active) .e-tab-text span {
-    color: #7D7870 !important;
+    color: #B5B1A9 !important;
+    font-weight: 500 !important;
 }
 
 /* Dark — hover */
@@ -176,6 +343,7 @@
     min-width: fit-content !important;
 }
 
+/* ── EXPANDED MODE (large icons, two rows) ── */
 button.dev-cc-toggle.e-btn {
     display: flex !important;
     flex-direction: column !important;
@@ -194,6 +362,32 @@ button.dev-cc-toggle.e-btn {
     color: #5A5750 !important;
     box-shadow: none !important;
 }
+
+/* ── SIMPLIFIED MODE (single row, inline — matches native ribbon buttons) ── */
+.e-ribbon-simplified-mode button.dev-cc-toggle.e-btn {
+    flex-direction: row !important;
+    height: 32px !important;
+    min-width: auto !important;
+    padding: 0px 4px 0px 0px !important;
+    gap: 4px;
+    min-height: auto !important;
+}
+.e-ribbon-simplified-mode .dev-cc-icon {
+    width: 20px !important;
+    height: 20px !important;
+    margin-left: 4px !important;
+}
+.e-ribbon-simplified-mode .dev-cc-icon svg {
+    width: 20px !important;
+    height: 20px !important;
+}
+.e-ribbon-simplified-mode .dev-btn-label {
+    font-size: .8125rem !important;
+}
+.e-ribbon-simplified-mode .dev-toggle-group .e-ribbon-group-header {
+    display: none !important;
+}
+
 button.dev-cc-toggle.e-btn:hover {
     background: #ECEAE6 !important;
     border-color: #D6D4CF !important;
@@ -323,7 +517,6 @@ button.dev-cc-toggle .dev-btn-label {
 ══════════════════════════════════════════════════════════════════════════ */
 
 
-/* 
 .e-de-ctn { background: #F4F3F0 !important; }
 .e-de-ctnr-ribbon { background: #F4F3F0 !important; }
 
@@ -392,8 +585,8 @@ button.dev-cc-toggle .dev-btn-label {
 
 .e-tab-header .e-toolbar-item:not(.e-active) .e-tab-text,
 .e-tab-header .e-toolbar-item:not(.e-active) .e-tab-text span {
-    color: #8A877F !important;
-    font-weight: 450 !important;
+    color: #5A5750 !important;
+    font-weight: 500 !important;
 }
 
 
@@ -415,31 +608,21 @@ button[id$="_sim_grp_overflow"] {
     overflow-x: auto !important;
     overflow-y: hidden !important;
     -webkit-overflow-scrolling: touch;
-    scrollbar-width: none;
 }
 
-
+/* Always-visible thin scrollbar */
 .e-ribbon-tab-item::-webkit-scrollbar {
-    height: 0px;
-    background: transparent;
-}
-
-
-.e-ribbon-tab-item:hover {
-    scrollbar-width: thin;
-    scrollbar-color: #D6D4CF transparent;
-}
-.e-ribbon-tab-item:hover::-webkit-scrollbar {
     height: 3px;
 }
-.e-ribbon-tab-item:hover::-webkit-scrollbar-track {
+.e-ribbon-tab-item::-webkit-scrollbar-track {
     background: transparent;
+    margin: 0 150px; 
 }
-.e-ribbon-tab-item:hover::-webkit-scrollbar-thumb {
+.e-ribbon-tab-item::-webkit-scrollbar-thumb {
     background: #D6D4CF;
     border-radius: 100px;
 }
-.e-ribbon-tab-item:hover::-webkit-scrollbar-thumb:hover {
+.e-ribbon-tab-item::-webkit-scrollbar-thumb:hover {
     background: #A09D97;
 }
 
@@ -450,11 +633,23 @@ button[id$="_sim_grp_overflow"] {
 }
 
 .e-ribbon-group-container {
+    display: flex !important;
+    visibility: visible !important;
+    position: static !important;
+    opacity: 1 !important;
     flex-shrink: 0 !important;
     min-width: fit-content !important;
 }
 
+/* Override Syncfusion inline style hiding on collapse */
+.e-ribbon-group-container[style*="display: none"],
+.e-ribbon-group-container[style*="display:none"] {
+    display: flex !important;
+}
+
 .e-ribbon-group-content {
+    display: flex !important;
+    visibility: visible !important;
     flex-shrink: 0 !important;
     flex-wrap: nowrap !important;
 }
@@ -521,7 +716,8 @@ button[id$="_sim_grp_overflow"] {
 
 [data-theme="dark"] .e-tab-header .e-toolbar-item:not(.e-active) .e-tab-text,
 [data-theme="dark"] .e-tab-header .e-toolbar-item:not(.e-active) .e-tab-text span {
-    color: #7D7870 !important;
+    color: #B5B1A9 !important;
+    font-weight: 500 !important;
 }
 
 
@@ -553,12 +749,12 @@ button[id$="_sim_grp_overflow"] {
 }
 
 
-[data-theme="dark"] .e-ribbon-tab-item:hover {
-    scrollbar-color: #4A4744 transparent;
+[data-theme="dark"] .e-ribbon-tab-item::-webkit-scrollbar-track {
+    background: transparent;
 }
-[data-theme="dark"] .e-ribbon-tab-item:hover::-webkit-scrollbar-thumb {
+[data-theme="dark"] .e-ribbon-tab-item::-webkit-scrollbar-thumb {
     background: #4A4744;
 }
-[data-theme="dark"] .e-ribbon-tab-item:hover::-webkit-scrollbar-thumb:hover {
+[data-theme="dark"] .e-ribbon-tab-item::-webkit-scrollbar-thumb:hover {
     background: #6B6860;
-} */
+}

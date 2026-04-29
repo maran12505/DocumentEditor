@@ -8,13 +8,15 @@
 
     <!-- Syncfusion styles (from Shared.UI RCL) -->
     <link href="_content/Deditor.Shared.UI/css/material.css" rel="stylesheet" />
+    <!-- Syncfusion Blazor components (DropDowns/Inputs/Buttons used by iPubEdit modal) -->
+    <link href="_content/Syncfusion.Blazor.Themes/material3.css" rel="stylesheet" />
 
     <!-- App styles (from Shared.UI RCL) -->
-    <link href="_content/Deditor.Shared.UI/css/app.css" rel="stylesheet" />
+    <link href="_content/Deditor.Shared.UI/css/app.css?v=4" rel="stylesheet" />
     <link href="_content/Deditor.Shared.UI/css/fontdialog.css" rel="stylesheet" />
     <link href="_content/Deditor.Shared.UI/css/selectiontoolbar.css" rel="stylesheet" />
     <link href="_content/Deditor.Shared.UI/css/Navigation.css" rel="stylesheet" />
-    <link href="_content/Deditor.Shared.UI/css/Ribbontabs.css" rel="stylesheet" />
+    <link href="_content/Deditor.Shared.UI/css/Ribbontabs.css?v=4" rel="stylesheet" />
     <link rel="icon" href="data:," />
     <link href="_content/Deditor.Shared.UI/css/schemacontrols.css" rel="stylesheet" />
     <link href="_content/Deditor.Shared.UI/css/cctagpicker.css" rel="stylesheet" />
@@ -64,7 +66,8 @@
     <script src="_content/Deditor.Shared.UI/js/compromise.js"></script>
 
     <!-- Custom JS (from Shared.UI RCL) -->
-    <script src="_content/Deditor.Shared.UI/js/documenteditor.js?v=29"></script>
+    <script src="_content/Deditor.Shared.UI/js/cetemplates.js?v=1"></script>
+    <script src="_content/Deditor.Shared.UI/js/documenteditor.js?v=35"></script>
     <script src="_content/Deditor.Shared.UI/js/selectiontoolbar.js"></script>
     <script src="_content/Deditor.Shared.UI/js/schemaparser.js"></script>
     <script src="_content/Deditor.Shared.UI/js/cctagpicker.js"></script>
@@ -105,6 +108,10 @@
             }, 30);
         }
     </script>
+
+    <!-- Syncfusion Blazor JS bundle — defines window.sfBlazor used by SfDropDownList / SfTextBox / SfCheckBox.
+         Loaded explicitly (script isolation is disabled in MauiProgram.cs) so it is ready before first render. -->
+    <script src="_content/Syncfusion.Blazor.Core/scripts/syncfusion-blazor.min.js"></script>
 
     <!-- Blazor MAUI WebView runtime -->
     <script src="_framework/blazor.webview.js"></script>

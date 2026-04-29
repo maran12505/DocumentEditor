@@ -1,0 +1,73 @@
+@*
+    Custom dropdown used inside the iPubEdit Meta Information modal.
+    Replaces native <select> so the popup is capped at a fixed height,
+    scrollable, and constrained inside the modal — native <select> popups
+    are OS-controlled and can overflow modal boundaries.
+
+    Usage:
+        <IPubDropdown @bind-Value="_meta.Publisher"
+                      Options="_publisherNames"
+                      Placeholder="Select publisher" />
+*@
+@namespace Deditor.Shared.UI.Pages
+
+<div class="ipub-dd @(_open ? "is-open" : "") @(Disabled ? "is-disabled" : "")"
+     @onclick:stopPropagation="true">
+    <button type="button" class="ipub-dd-trigger ipub-select"
+            @onclick="Toggle" disabled="@Disabled">
+        <span class="ipub-dd-value @(string.IsNullOrEmpty(Value) ? "is-placeholder" : "")">
+            @(string.IsNullOrEmpty(Value) ? Placeholder : Value)
+        </span>
+        <span class="ipub-dd-caret">▾</span>
+    </button>
+    @if (_open)
+    {
+        <div class="ipub-dd-menu">
+            @if (!string.IsNullOrEmpty(Placeholder))
+            {
+                <div class="ipub-dd-item ipub-dd-item-placeholder
+                            @(string.IsNullOrEmpty(Value) ? "is-selected" : "")"
+                     @onclick="() => Select(string.Empty)">
+                    @Placeholder
+                </div>
+            }
+            @if (Options != null)
+            {
+                foreach (var opt in Options)
+                {
+                    var label = opt;
+                    <div class="ipub-dd-item @(opt == Value ? "is-selected" : "")"
+                         @onclick="() => Select(opt)">@label</div>
+                }
+                if (!Options.Any())
+                {
+                    <div class="ipub-dd-item is-empty">No options</div>
+                }
+            }
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter] public string Value { get; set; } = string.Empty;
+    [Parameter] public EventCallback<string> ValueChanged { get; set; }
+    [Parameter] public IEnumerable<string>? Options { get; set; }
+    [Parameter] public string Placeholder { get; set; } = "Select";
+    [Parameter] public bool Disabled { get; set; }
+
+    private bool _open;
+
+    private void Toggle()
+    {
+        if (!Disabled) _open = !_open;
+    }
+
+    private async Task Select(string v)
+    {
+        _open = false;
+        if (v != Value)
+            await ValueChanged.InvokeAsync(v);
+    }
+
+    public void Close() => _open = false;
+}

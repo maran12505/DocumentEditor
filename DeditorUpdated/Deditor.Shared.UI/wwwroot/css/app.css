@@ -94,13 +94,16 @@ html, body {
 /* ══════════════════════════════════════════════════════
    TOP BAR
 ══════════════════════════════════════════════════════ */
+/* Hidden — keeps Blazor event handlers alive */
+.n-topbar--hidden {
+    display: none !important;
+}
+
 .n-topbar {
     display: flex;
     align-items: center;
     height: var(--n-topbar-h);
     padding: 0 14px;
-    /* background: var(--n-topbar) !important;
-    border-bottom: 1px solid var(--n-border); */
     flex-shrink: 0;
     gap: 4px;
     z-index: 20;
@@ -139,6 +142,175 @@ html, body {
     margin: 0 6px;
     flex-shrink: 0;
 }
+
+/* ══════════════════════════════════════════════════════
+   UNIFIED RIBBON HEADER — injected into Syncfusion ribbon
+══════════════════════════════════════════════════════ */
+
+/* ── Left group: logo ── */
+.n-ribbon-left {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    flex-shrink: 0;
+    padding: 0 6px 0 10px;
+    z-index: 5;
+}
+
+.n-ribbon-logo-img {
+    height: 28px;
+    width: auto;
+    object-fit: contain;
+    user-select: none;
+    flex-shrink: 0;
+}
+
+/* ── Right group: buttons ── */
+.n-ribbon-right {
+    display: flex;
+    align-items: center;
+    gap: 1px;
+    flex-shrink: 0;
+    padding: 0 6px 0 6px;
+    z-index: 5;
+}
+
+/* ── Divider for injected ribbon ── */
+.n-ribbon-divider {
+    display: inline-block;
+    width: 1px;
+    height: 20px;
+    background: var(--n-border);
+    margin: 0 5px;
+    flex-shrink: 0;
+}
+
+/* ── Ribbon button (shared base) ── */
+.n-rbtn {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 4px 7px;
+    border: none;
+    border-radius: var(--radius-sm);
+    font-size: .8rem;
+    font-weight: 500;
+    font-family: inherit;
+    cursor: pointer;
+    transition: background .12s, color .12s;
+    white-space: nowrap;
+    line-height: 1.4;
+    color: var(--n-text-2);
+    background: transparent;
+}
+.n-rbtn:hover { background: var(--n-hover); color: var(--n-text); }
+.n-rbtn:active { background: var(--n-active); }
+.n-rbtn svg { flex-shrink: 0; }
+.n-rbtn.active { background: var(--n-active); color: var(--n-text); }
+.n-rbtn-icon {
+    min-width: 16px;
+    min-height: 36px;
+    padding: 4px;
+    justify-content: center;
+}
+
+/* ── Save group ── */
+.n-ribbon-save-group {
+    display: inline-flex;
+    align-items: center;
+    gap: 0;
+}
+
+/* ── Theme toggle — dark mode amber ── */
+[data-theme="dark"] .n-rbtn-theme {
+    color: #F59E0B;
+}
+[data-theme="dark"] .n-rbtn-theme:hover {
+    background: rgba(245, 158, 11, 0.12);
+    color: #FBBF24;
+}
+
+/* ── AI Manuscript button ── */
+.n-rbtn-manuscript {
+    padding: 4px 12px;
+    background: #1B4965;
+    color: #fff;
+    font-weight: 600;
+    font-size: .78rem;
+    border-radius: var(--radius-sm);
+}
+.n-rbtn-manuscript:hover { background: #153d55; color: #fff; box-shadow: 0 1px 4px rgba(27,73,101,.35); }
+.n-rbtn-manuscript:active { background: #0f3048; color: #fff; }
+.n-rbtn-manuscript:disabled { opacity: .8; cursor: default; }
+.n-rbtn-manuscript.processing { background: #153d55; }
+[data-theme="dark"] .n-rbtn-manuscript { background: #1B4965; color: #fff; }
+[data-theme="dark"] .n-rbtn-manuscript:hover { background: #245a7a; color: #fff; }
+
+/* ── AI Chat button ── */
+.n-rbtn-ai {
+    padding: 4px 10px;
+    border: 1px solid var(--n-accent);
+    border-radius: var(--radius-sm);
+    background: var(--n-ai-bg);
+    color: var(--n-accent);
+    font-weight: 600;
+    font-size: .8rem;
+}
+.n-rbtn-ai:hover { background: var(--n-hover); border-color: var(--n-ai-border); box-shadow: var(--shadow-sm); }
+[data-theme="dark"] .n-rbtn-ai:hover { background: #2A1F45; border-color: #6D52C4; }
+.n-rbtn-ai.active { background: var(--n-ai); color: #fff; border-color: var(--n-ai); }
+.n-rbtn-ai.active:hover { background: #7C4FDE; }
+
+/* ── Avatar ── */
+.n-ribbon-avatar {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #2383E2, #062b4f);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    font-weight: 700;
+    color: #fff;
+    margin-left: 4px;
+    flex-shrink: 0;
+}
+
+/* ── Floating sidebar toggle (Word Online-style) ─────── */
+.n-sidebar-fab {
+    position: absolute;
+    left: 6px;
+    top: 25.5%;
+    transform: translateY(-50%);
+    z-index: 10;
+    width: 32px;
+    height: 32px;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid var(--n-border);
+    border-radius: 8px;
+    background: var(--n-surface);
+    color: var(--n-text-3);
+    cursor: pointer;
+    box-shadow: var(--shadow-sm);
+    transition: background .15s, color .15s, border-color .15s, box-shadow .15s;
+}
+.n-sidebar-fab:hover {
+    background: var(--n-hover);
+    color: var(--n-text);
+    border-color: var(--n-text-3);
+    box-shadow: var(--shadow-md);
+}
+.n-sidebar-fab.active {
+    display: none;
+    background: var(--n-active);
+    color: var(--n-text);
+    border-color: var(--n-accent);
+}
+.n-sidebar-fab svg { flex-shrink: 0; }
+.n-focus-mode .n-sidebar-fab { display: none; }
 
 /* ── Buttons ─────────────────────────────────────────── */
 .n-btn {
@@ -600,6 +772,8 @@ html, body {
     flex-shrink: 0;
     overflow-y: auto;
     animation: slideInLeft .18s ease-out;
+    padding-top: var(--n-ribbon-h, 89px);
+    box-sizing: border-box;
 }
 
 @keyframes slideInLeft {
@@ -744,6 +918,8 @@ html, body {
     border-left: 1px solid var(--n-border);
     flex-shrink: 0;
     animation: slideInRight .18s ease-out;
+    padding-top: var(--n-ribbon-h, 89px);
+    box-sizing: border-box;
 }
 
 @keyframes slideInRight {
@@ -812,6 +988,32 @@ html, body {
     color: var(--n-ai);
 }
 .n-ai-action-btn:disabled { opacity: .4; cursor: not-allowed; }
+
+/* AI Processor — full-width prominent button in sidebar */
+.n-ai-processor-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    width: 100%;
+    padding: 8px 12px;
+    border: none;
+    border-radius: var(--radius-sm);
+    background: #1B4965;
+    color: #fff;
+    font-size: .8rem;
+    font-weight: 600;
+    font-family: inherit;
+    cursor: pointer;
+    transition: background .15s, box-shadow .15s, opacity .15s;
+    white-space: nowrap;
+}
+.n-ai-processor-btn:hover:not(:disabled) { background: #153d55; box-shadow: 0 1px 4px rgba(27,73,101,.35); }
+.n-ai-processor-btn:active:not(:disabled) { background: #0f3048; }
+.n-ai-processor-btn:disabled { opacity: .7; cursor: not-allowed; }
+.n-ai-processor-btn.processing { background: #153d55; }
+[data-theme="dark"] .n-ai-processor-btn { background: #1B4965; }
+[data-theme="dark"] .n-ai-processor-btn:hover:not(:disabled) { background: #245a7a; }
 
 .n-ai-messages {
     flex: 1;

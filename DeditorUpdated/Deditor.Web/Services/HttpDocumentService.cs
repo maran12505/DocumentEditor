@@ -1,4 +1,6 @@
+using System.Net;
 using System.Net.Http.Json;
+using Deditor.Core.Models;
 using Deditor.Core.Services.Interfaces;
 
 namespace Deditor.Web.Services
@@ -61,6 +63,75 @@ namespace Deditor.Web.Services
             if (!string.IsNullOrEmpty(imageData))
                 return imageData;
             return string.Empty;
+        }
+
+        public async Task<byte[]> UpdateIPubCustomXmlAsync(byte[] docxBytes, IPubMetaDto dto)
+        {
+            Console.WriteLine("[HttpDocumentService.UpdateIPubCustomXml] ===== START =====");
+            try
+            {
+                using var formContent = new MultipartFormDataContent();
+                formContent.Add(new ByteArrayContent(docxBytes), "files", "document.docx");
+                var json = System.Text.Json.JsonSerializer.Serialize(dto);
+                formContent.Add(new StringContent(json), "dto");
+
+                Console.WriteLine($"[HttpDocumentService.UpdateIPubCustomXml] POST update-customxml, bytes={docxBytes.Length}, dto.length={json.Length}");
+                var response = await _http.PostAsync("api/documenteditor/update-customxml", formContent);
+                Console.WriteLine($"[HttpDocumentService.UpdateIPubCustomXml] response status = {(int)response.StatusCode}");
+                if (!response.IsSuccessStatusCode)
+                {
+                    Console.WriteLine("[HttpDocumentService.UpdateIPubCustomXml] non-success — returning original bytes.");
+                    return docxBytes;
+                }
+                var bytes = await response.Content.ReadAsByteArrayAsync();
+                Console.WriteLine($"[HttpDocumentService.UpdateIPubCustomXml] received {bytes.Length} bytes.");
+                Console.WriteLine("[HttpDocumentService.UpdateIPubCustomXml] ===== END =====");
+                return bytes;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[HttpDocumentService.UpdateIPubCustomXml] EXCEPTION: {ex.Message}");
+                return docxBytes;
+            }
+        }
+
+        public async Task<IPubMetaDto?> ExtractIPubMetaAsync(Stream docxStream)
+        {
+            Console.WriteLine("[HttpDocumentService.ExtractIPubMeta] ===== START =====");
+            try
+            {
+                using var formContent = new MultipartFormDataContent();
+                formContent.Add(new StreamContent(docxStream), "files", "document.docx");
+
+                Console.WriteLine("[HttpDocumentService.ExtractIPubMeta] POST api/documenteditor/extract-metadata");
+                var response = await _http.PostAsync("api/documenteditor/extract-metadata", formContent);
+                Console.WriteLine($"[HttpDocumentService.ExtractIPubMeta] response status = {(int)response.StatusCode} {response.StatusCode}");
+
+                if (response.StatusCode == HttpStatusCode.NoContent)
+                {
+                    Console.WriteLine("[HttpDocumentService.ExtractIPubMeta] 204 NoContent — no metadata extracted.");
+                    Console.WriteLine("[HttpDocumentService.ExtractIPubMeta] ===== END =====");
+                    return null;
+                }
+                if (!response.IsSuccessStatusCode)
+                {
+                    var err = await response.Content.ReadAsStringAsync();
+                    Console.WriteLine($"[HttpDocumentService.ExtractIPubMeta] non-success body: {err}");
+                    Console.WriteLine("[HttpDocumentService.ExtractIPubMeta] ===== END =====");
+                    return null;
+                }
+
+                var dto = await response.Content.ReadFromJsonAsync<IPubMetaDto>();
+                Console.WriteLine($"[HttpDocumentService.ExtractIPubMeta] DTO received. Publisher='{dto?.Publisher}' BookTitle='{dto?.BookTitle}' Isbn='{dto?.Isbn}'");
+                Console.WriteLine("[HttpDocumentService.ExtractIPubMeta] ===== END =====");
+                return dto;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[HttpDocumentService.ExtractIPubMeta] EXCEPTION: {ex.GetType().Name}: {ex.Message}");
+                Console.WriteLine("[HttpDocumentService.ExtractIPubMeta] ===== END (exception) =====");
+                return null;
+            }
         }
     }
 }

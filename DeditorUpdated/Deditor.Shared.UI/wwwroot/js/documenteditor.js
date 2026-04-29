@@ -80,12 +80,49 @@ function safeResize(attemptsLeft) {
     var w = parent ? parent.offsetWidth : 0;
     if (w > 0) {
         container.resize();
+        // Syncfusion's Find/Replace/Navigation pane caches its flex-child widths at
+        // open time and .resize() alone won't reshrink it. When the editor area
+        // changes width (e.g. AI sidebar toggled), close + reopen forces a relayout.
+        _refreshOptionsPane();
         // Refresh the active editor's ribbon layout
         _refreshActiveRibbon();
         return;
     }
     if (attemptsLeft <= 0) return;
     requestAnimationFrame(function () { setTimeout(function () { safeResize(attemptsLeft - 1); }, 50); });
+}
+
+function _refreshOptionsPane() {
+    try {
+        var mod = container && container.documentEditor && container.documentEditor.optionsPaneModule;
+        if (!mod || !mod.isOptionsPaneShow) return;
+
+        // Capture the active sub-tab (Heading / Find / Replace) before the close/reopen
+        // dance below. Syncfusion's showHideOptionsPane(true) reopens to Find by default,
+        // which would silently clobber Heading/Replace whenever this runs (ribbon tab
+        // click, window resize, AI-sidebar toggle all funnel through safeResize → here).
+        var savedIdx = null;
+        try {
+            if (mod.tabInstance && typeof mod.tabInstance.selectedItem === 'number') {
+                savedIdx = mod.tabInstance.selectedItem;
+            }
+        } catch (e) { /* tabInstance may not be ready; fall through */ }
+
+        mod.showHideOptionsPane(false);
+        mod.showHideOptionsPane(true);
+        container.resize();
+
+        // Restore the sub-tab if Syncfusion reopened to a different one.
+        if (savedIdx !== null) {
+            try {
+                var cur = (mod.tabInstance && typeof mod.tabInstance.selectedItem === 'number')
+                    ? mod.tabInstance.selectedItem : null;
+                if (cur !== savedIdx && mod.tabInstance && typeof mod.tabInstance.select === 'function') {
+                    mod.tabInstance.select(savedIdx);
+                }
+            } catch (e) { /* non-fatal */ }
+        }
+    } catch (e) {}
 }
 
 // Find and refresh the ribbon component on the active editor
@@ -180,8 +217,16 @@ window.loadTabFromDb = async function (tabId) {
     showLoader('Loading…');
     var sfdt = await window.tabDbLoad(tabId);
     if (sfdt && sfdt.length > 10) {
-        container.documentEditor.open(sfdt);
+        var entry = _editors[_activeEditorTabId] || _editors[tabId];
+        if (entry) { entry.originalSfdt = sfdt; entry._loadingDocument = true; }
+        var cleanSfdt = _sanitizeSfdtForOpen(sfdt);
+        container.documentEditor.open(cleanSfdt);
+        _postOpenFieldStrip();
         container.documentEditor.focusIn();
+        if (entry) {
+            entry.editedSinceOpen = false;
+            setTimeout(function () { entry._loadingDocument = false; }, 100);
+        }
         hideLoader();
         return true;
     }
@@ -248,15 +293,23 @@ window.createEditorForTab = function (tabId) {
 
     var editorEntry = {
         container: inst, divId: divId, navPaneOpen: false,
+        autoHeadingsEnabled: false,
         ccTagsVisible: false,
         cleanSfdt: null,    // original SFDT string (no markers)
         markedSfdt: null,   // SFDT string with tag markers inserted (cached)
-        _editedInTagView: false  // true if user edited while tags were visible
+        _editedInTagView: false,  // true if user edited while tags were visible
+        // Zotero / Word field-instruction round-trip state (see _sanitizeSfdtForOpen)
+        originalSfdt: null,         // pristine SFDT including ft:0…ft:2 instruction runs
+        editedSinceOpen: false,     // flipped true by contentChange once user edits
+        _loadingDocument: false     // guard: suppress contentChange during programmatic open()
     };
     _editors[tabId] = editorEntry;
 
-    // Track edits made while in tag-view mode — invalidates stale cleanSfdt
+    // Track edits. Ignore the synthetic contentChange fired by open(); only real
+    // user edits should mark the document dirty for save-time round-trip decisions.
     inst.documentEditor.contentChange = function () {
+        if (editorEntry._loadingDocument) return;
+        editorEntry.editedSinceOpen = true;
         if (editorEntry.ccTagsVisible) {
             editorEntry._editedInTagView = true;
             // Invalidate caches so HIDE will serialize fresh instead of restoring stale cleanSfdt
@@ -273,11 +326,8 @@ window.createEditorForTab = function (tabId) {
     // Attach slash command listener to this editor's canvas
     _attachSlashToEditor(divId);
 
-    // Inject Developer tab into this editor's ribbon
-    setTimeout(function () {
-        var editorDiv = document.getElementById(divId);
-        if (editorDiv) _injectDeveloperTab(editorDiv);
-    }, 500);
+    // Inject unified header ASAP via MutationObserver (no 500ms flash)
+    _watchForRibbon(divId);
 
     console.log('[MultiEditor] Editor created. Total instances: ' + Object.keys(_editors).length);
     return true;
@@ -310,18 +360,38 @@ function _setActiveEditor(tabId) {
     _toggleSeq++;
 
     // Resize after layout settles
+    // Sync search button to this tab's nav pane state
+    var navOpen = entry.navPaneOpen || false;
+    document.querySelectorAll('.n-rbtn-search').forEach(function (b) { b.classList.toggle('active', navOpen); });
+
+    var _switchDelay = window.__serverBaseUrl ? 150 : 30;
     setTimeout(function () {
         try { container.resize(); } catch (e) {}
         try { container.documentEditor.focusIn(); } catch (e) {}
-        // Update toggle button to reflect this tab's tag state
+        // Also focus the viewer container for WebView2 scroll
         var edDiv = document.getElementById(entry.divId);
         if (edDiv) {
+            var vc = edDiv.querySelector('[id$="_editor_viewerContainer"]');
+            if (vc) try { vc.focus(); } catch (e) {}
             var btn = edDiv.querySelector('.dev-cc-toggle');
             if (btn) _updateToggleBtn(btn, _ccTagsVisible);
         }
-    }, 30);
+    }, _switchDelay);
+    // MAUI/WebView2 safety net: second resize + focusIn after layout fully settles
+    if (window.__serverBaseUrl) {
+        setTimeout(function () {
+            try { container.resize(); } catch (e) {}
+            try { container.documentEditor.focusIn(); } catch (e) {}
+        }, 200);
+    }
     if (window.initSelectionToolbar) {
         setTimeout(window.initSelectionToolbar, 100);
+    }
+    // Re-setup auto-headings if nav pane is open for this tab
+    if (entry.navPaneOpen) {
+        // Early sync to prevent blink (before full setup at 200ms)
+        setTimeout(function () { var r = _getActiveEditorRoot(); if (r) _ahSyncVisNow(r); }, 50);
+        setTimeout(function () { _cleanNavigationHeadings(); _setupAutoHeadings(); }, 200);
     }
 }
 
@@ -415,6 +485,29 @@ window.addEventListener('resize', function () {
         safeResize(5);
     }, 150);
 });
+
+    // ── MAUI/WebView2: Refocus viewer on wheel to fix scroll after focus loss ──
+    if (window.__serverBaseUrl) {
+        var _wheelArea = document.querySelector('#editorArea');
+        if (_wheelArea) {
+            var _lastWheelFocus = 0;
+            _wheelArea.addEventListener('wheel', function (e) {
+                var now = Date.now();
+                if (now - _lastWheelFocus < 200) return;
+                var ae = document.activeElement;
+                if (ae && (ae.tagName === 'INPUT' || ae.tagName === 'TEXTAREA' || ae.tagName === 'SELECT' || ae.isContentEditable)) return;
+                if (!container || !container.documentEditor || !_activeEditorTabId) return;
+                var entry = _editors[_activeEditorTabId];
+                if (!entry) return;
+                var edDiv = document.getElementById(entry.divId);
+                var vc = edDiv && edDiv.querySelector('[id$="_editor_viewerContainer"]');
+                if (vc && vc.contains(e.target)) {
+                    _lastWheelFocus = now;
+                    try { container.documentEditor.focusIn(); } catch (ex) {}
+                }
+            }, { passive: true });
+        }
+    }
 
     _interceptFileMenu();
 };
@@ -578,6 +671,78 @@ window.saveToExistingHandle = async function (tabId, base64) {
     }
 };
 
+// ── Update customXml (iCore metadata) inside the bound DOCX file ─────────────
+// Called from Blazor after iPubEdit Meta dialog Save. Reads the original DOCX
+// bytes via the File System Access handle, POSTs to /update-customxml with the
+// metadata DTO, and writes the patched DOCX bytes back through the same handle.
+// Returns one of: 'OK', 'NO_HANDLE', 'PERMISSION_DENIED', 'DELETED', 'ERROR:<msg>'.
+window.updateCustomXmlForActiveTab = async function (tabId, dtoJson) {
+    console.log('[UpdateMeta-JS] ===== START tab=' + tabId + ' =====');
+    if (!_fileHandles || !_fileHandles[tabId]) {
+        console.warn('[UpdateMeta-JS] No file handle for tab — cannot persist to disk.');
+        console.log('[UpdateMeta-JS] ===== END (no handle) =====');
+        return 'NO_HANDLE';
+    }
+    var handle = _fileHandles[tabId];
+    try {
+        // Upgrade to readwrite (no-op if already granted).
+        var perm = await handle.queryPermission({ mode: 'readwrite' });
+        if (perm !== 'granted') {
+            console.log('[UpdateMeta-JS] Requesting readwrite permission...');
+            perm = await handle.requestPermission({ mode: 'readwrite' });
+            if (perm !== 'granted') {
+                console.warn('[UpdateMeta-JS] Permission denied.');
+                console.log('[UpdateMeta-JS] ===== END (permission denied) =====');
+                return 'PERMISSION_DENIED';
+            }
+        }
+
+        var file;
+        try { file = await handle.getFile(); }
+        catch (fileErr) {
+            if (fileErr.name === 'NotFoundError') {
+                console.warn('[UpdateMeta-JS] Source file deleted on disk.');
+                console.log('[UpdateMeta-JS] ===== END (deleted) =====');
+                return 'DELETED';
+            }
+            throw fileErr;
+        }
+        console.log('[UpdateMeta-JS] read source file: name=' + file.name + ' size=' + file.size);
+
+        // Build multipart payload: file + dto JSON
+        var form = new FormData();
+        form.append('files', file, file.name || 'document.docx');
+        form.append('dto', dtoJson || '{}');
+
+        console.log('[UpdateMeta-JS] POST /api/documenteditor/update-customxml');
+        var response = await fetch(_apiUrl('/api/documenteditor/update-customxml'), { method: 'POST', body: form });
+        console.log('[UpdateMeta-JS] response status = ' + response.status + ' ' + response.statusText);
+        if (!response.ok) {
+            var errText = await response.text();
+            console.warn('[UpdateMeta-JS] non-success body: ' + errText);
+            console.log('[UpdateMeta-JS] ===== END (server error) =====');
+            return 'ERROR:' + response.status;
+        }
+
+        var blob = await response.blob();
+        var arr = new Uint8Array(await blob.arrayBuffer());
+        console.log('[UpdateMeta-JS] received patched DOCX: ' + arr.length + ' bytes. Writing back to handle...');
+
+        var writable = await handle.createWritable();
+        await writable.write(arr);
+        await writable.close();
+        console.log('[UpdateMeta-JS] DOCX written back to disk OK.');
+        console.log('[UpdateMeta-JS] ===== END =====');
+        return 'OK';
+    } catch (e) {
+        console.warn('[UpdateMeta-JS] EXCEPTION:', e && e.message);
+        if (e.name === 'NotAllowedError' || e.name === 'SecurityError') return 'PERMISSION_DENIED';
+        if (e.name === 'NotFoundError') return 'DELETED';
+        console.log('[UpdateMeta-JS] ===== END (exception) =====');
+        return 'ERROR:' + (e && e.message);
+    }
+};
+
 window.saveAsComplete = async function (tabId, suggestedName, formatExt, serverSaveUrl) {
     try {
         var mimeMap = {
@@ -631,6 +796,7 @@ window.openAndUploadToServer = async function () {
 
         var handles = await window.showOpenFilePicker({
             multiple: false,
+            mode: 'readwrite',
             types: [{
                 description: 'Documents',
                 accept: {
@@ -693,6 +859,44 @@ window.openAndUploadToServer = async function () {
             try { await window._blazorEditorRef.invokeMethodAsync('OnFileOpenedFromJS', file.name || 'document.docx'); } catch (e) {}
         }
 
+        // ── customXml -> iPubEdit Meta auto-fill (best-effort, .docx only) ──
+        if (fileExt === '.docx' && window._blazorEditorRef) {
+            (async function () {
+                console.log('[ExtractMeta-JS] ===== START =====');
+                try {
+                    var metaForm = new FormData();
+                    metaForm.append('files', file);
+                    console.log('[ExtractMeta-JS] POST /api/documenteditor/extract-metadata, file=' + (file.name || 'document.docx') + ' size=' + file.size);
+                    var metaResp = await fetch(_apiUrl('/api/documenteditor/extract-metadata'), { method: 'POST', body: metaForm });
+                    console.log('[ExtractMeta-JS] response status = ' + metaResp.status + ' ' + metaResp.statusText);
+                    if (metaResp.status === 204) {
+                        console.log('[ExtractMeta-JS] 204 NoContent — no customXml metadata found.');
+                        console.log('[ExtractMeta-JS] ===== END =====');
+                        return;
+                    }
+                    if (!metaResp.ok) {
+                        var errText = await metaResp.text();
+                        console.warn('[ExtractMeta-JS] non-success body: ' + errText);
+                        console.log('[ExtractMeta-JS] ===== END =====');
+                        return;
+                    }
+                    var dto = await metaResp.json();
+                    console.log('[ExtractMeta-JS] DTO received:', dto);
+                    try {
+                        await window._blazorEditorRef.invokeMethodAsync('OnIPubMetaExtractedFromJS', dto);
+                        console.log('[ExtractMeta-JS] OnIPubMetaExtractedFromJS invoked OK.');
+                    } catch (invokeErr) {
+                        console.warn('[ExtractMeta-JS] invokeMethodAsync failed:', invokeErr && invokeErr.message);
+                    }
+                } catch (metaErr) {
+                    console.warn('[ExtractMeta-JS] EXCEPTION:', metaErr && metaErr.message);
+                }
+                console.log('[ExtractMeta-JS] ===== END =====');
+            })();
+        } else {
+            console.log('[ExtractMeta-JS] Skipped (ext=' + fileExt + ', blazorRef=' + (!!window._blazorEditorRef) + ')');
+        }
+
         setTimeout(function () {
             console.log("🎉 Document loaded in " + (performance.now() - startTime).toFixed(0) + "ms");
             hideLoader();
@@ -734,6 +938,12 @@ window.applyTheme = function (isDark) {
     if (isDark) document.documentElement.setAttribute('data-theme', 'dark');
     else document.documentElement.removeAttribute('data-theme');
     try { localStorage.setItem('deditor-theme', isDark ? 'dark' : 'light'); } catch (e) {}
+    // NOTE: Syncfusion paints the page onto a <canvas>, and its pageBackgroundColor
+    // property is not reactive in this build — setting it does not repaint the
+    // canvas, and a serialize/open round-trip still paints RGBA(255,255,255,255).
+    // Document "paper" stays white in dark mode until Syncfusion exposes a repaint
+    // hook (or we swap to their built-in theme API). Chrome around the page still
+    // darkens correctly via the [data-theme="dark"] CSS rules.
 };
 
 window.getThemePreference = function () {
@@ -751,6 +961,8 @@ window.toggleNavigationPane = function (open) {
     if (open) {
         container.documentEditor.showOptionsPane();
         _watchOptionsPaneClose();
+        // Clean tag markers from navigation headings after pane renders, then setup auto-headings
+        setTimeout(function () { _cleanNavigationHeadings(); _setupNavCleanObserver(); _setupAutoHeadings(); }, 300);
     } else {
         try {
             var mod = container.documentEditor.optionsPaneModule || container.documentEditor['optionsPaneModule'];
@@ -822,9 +1034,19 @@ function _attachPaneWatcher(pane) {
 
 function _markNavPaneClosed(tabId) {
     if (_editors[tabId]) _editors[tabId].navPaneOpen = false;
+    // Deactivate search button in unified toolbar
+    document.querySelectorAll('.n-rbtn-search').forEach(function (b) { b.classList.remove('active'); });
     if (tabId === _activeEditorTabId && window._blazorEditorRef) {
         try { window._blazorEditorRef.invokeMethodAsync('OnNavPaneClosed'); }
         catch (e) { console.warn('[NavPane] Could not notify Blazor:', e); }
+    }
+}
+
+// Called after any user-facing de.open() to sync nav pane state
+function _afterDocumentOpen() {
+    document.querySelectorAll('.n-rbtn-search').forEach(function (b) { b.classList.remove('active'); });
+    if (_activeEditorTabId && _editors[_activeEditorTabId]) {
+        _editors[_activeEditorTabId].navPaneOpen = false;
     }
 }
 
@@ -850,28 +1072,109 @@ window.loadBlankDocument = function () {
     if (!container) return;
     container.documentEditor.openBlank();
     container.documentEditor.focusIn();
+    _afterDocumentOpen();
 };
 window.loadDocument = function (sfdt) {
     if (!container) return Promise.resolve();
     console.log('[Render] Opening document (' + Math.round((sfdt || '').length / 1024) + 'KB)...');
-    
+
+    // Stash pristine SFDT for round-trip save (preserves Zotero field instructions
+    // that _sanitizeSfdtForOpen strips below). See _stripFieldInstructions comment.
+    var entry = _editors[_activeEditorTabId];
+    if (entry) { entry.originalSfdt = sfdt; entry._loadingDocument = true; }
+    var cleanSfdt = _sanitizeSfdtForOpen(sfdt);
+
     // Yield TWO frames so the browser can paint the loading spinner
     // before the synchronous open() blocks the main thread
     return new Promise(function (resolve) {
         requestAnimationFrame(function () {
             requestAnimationFrame(function () {
                 var start = performance.now();
-                container.documentEditor.open(sfdt);
+                try { container.documentEditor.open(cleanSfdt); }
+                catch (e) { console.warn('[Render] open() threw (non-fatal):', e && e.message); }
                 console.log('[Render] open() took ' + (performance.now() - start).toFixed(0) + 'ms');
-                container.documentEditor.focusIn();
-                resolve();
+                try { _postOpenFieldStrip(); } catch (e) { console.warn('[Render] _postOpenFieldStrip:', e && e.message); }
+
+                // Syncfusion 32.2.3 bug: open() returns synchronously but `processSfdt`
+                // continues in an internal Promise chain. Calling focusIn() / accessing
+                // selection here races against bodyWidget attachment. We:
+                //   1. SKIP focusIn() entirely — the user's first click focuses anyway,
+                //      and the caret-blink animation isn't worth a NullRef cascade.
+                //   2. POLL for bodyWidget before resolving so callers (HydrateMetaFromCustomXml,
+                //      applyMetadata) only run when the selection module is safe to touch.
+                var de = container.documentEditor;
+                var pollStart = performance.now();
+                (function waitForBody() {
+                    var ready = false;
+                    try {
+                        ready = !!(de && de.documentHelper && de.documentHelper.pages
+                                   && de.documentHelper.pages.length > 0
+                                   && de.documentHelper.pages[0].bodyWidgets
+                                   && de.documentHelper.pages[0].bodyWidgets.length > 0);
+                    } catch (e) { ready = false; }
+
+                    if (ready || (performance.now() - pollStart) > 4000) {
+                        try { _afterDocumentOpen(); } catch (e) { console.warn('[Render] _afterDocumentOpen:', e && e.message); }
+                        if (entry) {
+                            entry.editedSinceOpen = false;
+                            setTimeout(function () { entry._loadingDocument = false; }, 100);
+                        }
+                        resolve();
+                    } else {
+                        setTimeout(waitForBody, 50);
+                    }
+                })();
             });
         });
     });
 };
+
+// ── Suppress 3 known-harmless Syncfusion 32.2.3 console errors ─────────────
+// These fire from internal Promise/setTimeout callbacks during SFDT processing
+// and selection-init — try/catch around open() cannot catch them. They do NOT
+// affect document rendering. We match by message substring + source file so we
+// don't accidentally swallow real app errors.
+(function installSyncfusionNoiseFilter() {
+    if (window._sfNoiseFilterInstalled) return;
+    window._sfNoiseFilterInstalled = true;
+    var noisySnippets = [
+        "reading 'bodyWidget'",
+        "Can't find local header signature",
+        "reading 'length'"
+    ];
+    function isNoise(msg, src) {
+        if (!msg) return false;
+        var m = String(msg);
+        if (!noisySnippets.some(function (s) { return m.indexOf(s) !== -1; })) return false;
+        // Only filter when the source is Syncfusion's bundle.
+        return !src || String(src).indexOf('ej2.min.js') !== -1 || String(src).indexOf('ej2.') !== -1;
+    }
+    window.addEventListener('error', function (e) {
+        if (isNoise(e.message, e.filename)) { e.preventDefault(); e.stopImmediatePropagation(); return false; }
+    }, true);
+    window.addEventListener('unhandledrejection', function (e) {
+        var r = e.reason;
+        var msg = r && (r.message || r.toString && r.toString());
+        var src = r && r.stack;
+        if (isNoise(msg, src)) { e.preventDefault(); }
+    });
+})();
 window.getDocumentContent = function () {
     if (!container) return null;
     var ts = _getTabState();
+
+    // Round-trip fast path: if the document was opened via the field-instruction
+    // sanitizer and the user hasn't edited anything since, return the pristine
+    // original SFDT. This keeps Zotero / Word field instructions intact so the
+    // exported DOCX still contains ADDIN ZOTERO_ITEM / PAGEREF / HYPERLINK field
+    // codes and downstream plugins can refresh citations.
+    // Exception: if Show Tags is active, we fall through to the tag-handling
+    // branches below (tag state trumps round-trip).
+    if (ts && !ts.ccTagsVisible && ts.originalSfdt && !ts.editedSinceOpen) {
+        console.log('[Save] Returning pristine original SFDT (fields preserved, ' + Math.round(ts.originalSfdt.length / 1024) + 'KB)');
+        return ts.originalSfdt;
+    }
+
     if (ts && ts.ccTagsVisible) {
         if (ts._editedInTagView) {
             // Edited in tag view — strip markers from current state
@@ -906,14 +1209,30 @@ window.saveAndSwitch = function (newSfdt, isBlank) {
         } else {
             oldSfdt = ts.cleanSfdt || container.documentEditor.serialize();
         }
+    } else if (ts && ts.originalSfdt && !ts.editedSinceOpen) {
+        // Unmodified doc — return the pristine SFDT (keeps Zotero field instructions)
+        oldSfdt = ts.originalSfdt;
     } else {
         oldSfdt = container.documentEditor.serialize();
     }
     // Clear cache on switch — will be rebuilt when user toggles again
     if (ts) { ts.cleanSfdt = null; ts.markedSfdt = null; }
+
+    // Stash pristine SFDT for the INCOMING document's round-trip and sanitize for render.
+    if (ts) {
+        ts.originalSfdt = isBlank ? null : newSfdt;
+        ts._loadingDocument = true;
+    }
     if (isBlank) container.documentEditor.openBlank();
-    else container.documentEditor.open(newSfdt);
+    else {
+        container.documentEditor.open(_sanitizeSfdtForOpen(newSfdt));
+        _postOpenFieldStrip();
+    }
     container.documentEditor.focusIn();
+    if (ts) {
+        ts.editedSinceOpen = false;
+        setTimeout(function () { ts._loadingDocument = false; }, 100);
+    }
     return oldSfdt;
 };
 
@@ -1038,6 +1357,486 @@ function _extractHeadings(block, results) {
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
+// AUTO-DETECTED HEADINGS (MS Word Online-style)
+// ══════════════════════════════════════════════════════════════════════════════
+//
+// Each editor tab has its OWN nav pane DOM. _setupAutoHeadings is called
+// per-tab and stores observers in _editors[tabId] so they're independent.
+// The treeDiv gets class .n-heading-panel for CSS scrollbar styling.
+// A MutationObserver on treeDiv's style attribute handles FIND/REPLACE hiding.
+// A MutationObserver on opTab's childList keeps the footer in correct position.
+
+var _ahRetries = 0;
+var _ahToggleHTML =
+    '<label class="n-toggle-switch">' +
+        '<input type="checkbox" class="n-auto-headings-cb">' +
+        '<span class="n-toggle-slider"></span>' +
+    '</label>' +
+    '<span class="n-auto-headings-label">Automatically detected headings</span>' +
+    '<span class="n-auto-headings-info" title="Detect headings by formatting when the document has no heading styles">' +
+        '<svg width="14" height="14" viewBox="0 0 2048 2048" fill="currentColor"><path d="M1152 640q0 53-37 91-37 37-91 37-53 0-91-37-37-37-37-91 0-53 37-91 37-37 91-37 53 0 91 37 37 37 37 91z m-256 384q0-53 37-91 37-37 91-37 53 0 91 37 37 37 37 91v384q0 53-37 91-37 37-91 37-53 0-91-37-37-37-37-91v-384z m-768 0q0-243 122-452 119-203 322-322 209-122 452-122 243 0 452 122 203 119 322 322 122 209 122 452 0 243-122 452-119 203-322 322-209 122-452 122-243 0-452-122-203-119-322-322-122-209-122-452z m896-768q-209 0-388 105-174 102-275 275-105 179-105 388 0 209 105 388 102 174 275 275 179 105 388 105 209 0 388-105 174-102 275-275 105-179 105-388 0-209-105-388-102-174-275-275-179-105-388-105z"/></svg>' +
+    '</span>';
+
+// ── Ensure correct DOM order: searchBar → treeDiv → [auto-tree] → footer
+function _ahEnsureOrder(opTab) {
+    var td = opTab.querySelector('[id$="_editor_treeDiv"]');
+    var footer = opTab.querySelector('.n-auto-headings-footer');
+    if (!td || !footer) return;
+    var searchBar = opTab.querySelector('.n-heading-search-bar');
+    var autoTree = opTab.querySelector('.n-auto-headings-tree');
+    // searchBar before treeDiv
+    if (searchBar && searchBar.nextSibling !== td) td.parentNode.insertBefore(searchBar, td);
+    if (autoTree) {
+        // treeDiv → autoTree → footer
+        if (td.nextSibling !== autoTree) td.parentNode.insertBefore(autoTree, td.nextSibling);
+        if (autoTree.nextSibling !== footer) autoTree.parentNode.insertBefore(footer, autoTree.nextSibling);
+    } else {
+        // treeDiv → footer
+        if (td.nextSibling !== footer) td.parentNode.insertBefore(footer, td.nextSibling);
+    }
+}
+
+// ── Global polling: sync visibility of footer/auto-tree in ACTIVE editor ──
+// Replaces all MutationObservers. Runs every 200ms, checks the ACTIVE editor
+// only — works across tab switches without re-attaching observers.
+if (!window._ahVisInterval) {
+    window._ahVisInterval = setInterval(function () {  // 100ms polling
+        if (!_activeEditorTabId || !_editors[_activeEditorTabId]) return;
+        var root = document.getElementById(_editors[_activeEditorTabId].divId);
+        if (!root) return;
+        var td = root.querySelector('[id$="_editor_treeDiv"]');
+        if (!td) return;
+        var footer = root.querySelector('.n-auto-headings-footer');
+        var autoTree = root.querySelector('.n-auto-headings-tree');
+        // Syncfusion sets treeDiv display:none when FIND/REPLACE is active.
+        // When auto-headings toggle is ON, we also set display:none + data-auto-hidden.
+        // Heading tab is active when: treeDiv is NOT hidden by Syncfusion.
+        var searchContent = root.querySelector('.e-de-search-tab-content');
+        var isHeadingTab = !searchContent || searchContent.style.display === 'none';
+        var searchBar = root.querySelector('.n-heading-search-bar');
+        if (searchBar) searchBar.style.display = isHeadingTab ? '' : 'none';
+        if (footer) footer.style.display = isHeadingTab ? '' : 'none';
+        if (autoTree) autoTree.style.display = isHeadingTab ? '' : 'none';
+        // Syncfusion's built-in heading treeDiv isn't hidden when Replace is
+        // active (only when Find is), so chapters leak into the Replace view.
+        // Force-hide it whenever we're not on the Heading tab.
+        if (!isHeadingTab) {
+            td.style.display = 'none';
+        } else if (!td.hasAttribute('data-auto-hidden')) {
+            // Restore on Heading tab unless auto-headings toggle hid it explicitly
+            td.style.display = '';
+        } else {
+            td.style.display = 'none';
+        }
+    }, 100);
+}
+
+// Helper to get active editor root div
+function _getActiveEditorRoot() {
+    if (!_activeEditorTabId || !_editors[_activeEditorTabId]) return null;
+    return document.getElementById(_editors[_activeEditorTabId].divId);
+}
+
+// Immediate sync for use after setup/tab-switch (doesn't wait for interval)
+function _ahSyncVisNow(root) {
+    if (!root) return;
+    var td = root.querySelector('[id$="_editor_treeDiv"]');
+    if (!td) return;
+    var footer = root.querySelector('.n-auto-headings-footer');
+    var autoTree = root.querySelector('.n-auto-headings-tree');
+    var searchBar = root.querySelector('.n-heading-search-bar');
+    var searchContent = root.querySelector('.e-de-search-tab-content');
+    var isHeadingTab = !searchContent || searchContent.style.display === 'none';
+    if (searchBar) searchBar.style.display = isHeadingTab ? '' : 'none';
+    if (footer) footer.style.display = isHeadingTab ? '' : 'none';
+    if (autoTree) autoTree.style.display = isHeadingTab ? '' : 'none';
+    if (isHeadingTab && td.hasAttribute('data-auto-hidden')) td.style.display = 'none';
+}
+
+// ── Apply flex layout (Syncfusion may reset display:block on tab switch) ──
+function _ahApplyLayout(opDiv, opTab, treeDiv) {
+    opDiv.style.display = 'flex';
+    opDiv.style.flexDirection = 'column';
+    opDiv.style.height = '100%';
+    opDiv.style.overflow = 'hidden';
+    opTab.style.flex = '1';
+    opTab.style.display = 'flex';
+    opTab.style.flexDirection = 'column';
+    opTab.style.overflow = 'hidden';
+    opTab.style.minHeight = '0';
+    treeDiv.style.flex = '1';
+    treeDiv.style.overflowY = 'auto';
+    treeDiv.style.minHeight = '0';
+    treeDiv.style.height = '';
+    if (!treeDiv.classList.contains('n-heading-panel')) treeDiv.classList.add('n-heading-panel');
+}
+
+// ── Main setup: called per editor tab, fully idempotent ──────────────
+function _setupAutoHeadings() {
+    if (!_activeEditorTabId || !_editors[_activeEditorTabId]) return;
+    var entry = _editors[_activeEditorTabId];
+    var root = document.getElementById(entry.divId);
+    if (!root) return;
+    var opDiv = root.querySelector('.e-de-op');
+    if (!opDiv) return;
+    var opTab = opDiv.querySelector('.e-de-op-tab');
+    if (!opTab) return;
+    var treeDiv = opTab.querySelector('[id$="_editor_treeDiv"]');
+    if (!treeDiv) {
+        if (_ahRetries++ < 15) setTimeout(_setupAutoHeadings, 100);
+        return;
+    }
+    _ahRetries = 0;
+
+    // ── Always re-apply flex layout (Syncfusion resets on tab switch) ──
+    _ahApplyLayout(opDiv, opTab, treeDiv);
+
+    // ── Wire click on tab header for immediate sync (once per opTab) ──
+    var tabHeader = opTab.querySelector('.e-tab-header');
+    if (tabHeader && !tabHeader._ahClickWired) {
+        tabHeader._ahClickWired = true;
+        tabHeader.addEventListener('click', function () {
+            requestAnimationFrame(function () {
+                var r = _getActiveEditorRoot();
+                if (r) _ahSyncVisNow(r);
+            });
+        });
+    }
+
+    // ── If footer already exists, just sync state + ensure order ──
+    var existingFooter = opTab.querySelector('.n-auto-headings-footer');
+    if (existingFooter) {
+        _ahEnsureOrder(opTab);
+        // Sync toggle checkbox
+        var cb = existingFooter.querySelector('.n-auto-headings-cb');
+        if (cb) {
+            cb.checked = !!entry.autoHeadingsEnabled;
+            if (entry.autoHeadingsEnabled) _showAutoHeadings(root);
+            else _hideAutoHeadings(root);
+        }
+        _ahSyncVisNow(root);
+        return;
+    }
+
+    // ── First-time setup: create search bar + footer + attach observers ──
+
+    // Search bar
+    var searchBar = document.createElement('div');
+    searchBar.className = 'n-heading-search-bar';
+    searchBar.innerHTML =
+        '<span class="n-hs-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></span>' +
+        '<input type="text" class="n-hs-input" placeholder="Search headings...">' +
+        '<button class="n-hs-clear" title="Clear"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>';
+    treeDiv.parentNode.insertBefore(searchBar, treeDiv);
+
+    var hsInput = searchBar.querySelector('.n-hs-input');
+    var hsClear = searchBar.querySelector('.n-hs-clear');
+    hsInput.addEventListener('input', function () {
+        hsClear.classList.toggle('visible', hsInput.value.length > 0);
+        _filterHeadingItems(opTab, hsInput.value);
+    });
+    hsClear.addEventListener('click', function () {
+        hsInput.value = '';
+        hsClear.classList.remove('visible');
+        _filterHeadingItems(opTab, '');
+    });
+    // Prevent Syncfusion from stealing keyboard input
+    hsInput.addEventListener('keydown', function (e) { e.stopPropagation(); });
+
+    var footer = document.createElement('div');
+    footer.className = 'n-auto-headings-footer';
+    footer.innerHTML = _ahToggleHTML;
+    treeDiv.parentNode.insertBefore(footer, treeDiv.nextSibling);
+    _ahEnsureOrder(opTab);
+
+    // Toggle event
+    footer.querySelector('.n-auto-headings-cb').addEventListener('change', function () {
+        var en = this.checked;
+        if (_activeEditorTabId && _editors[_activeEditorTabId]) {
+            _editors[_activeEditorTabId].autoHeadingsEnabled = en;
+        }
+        // root may be stale; re-fetch
+        var r = document.getElementById(_editors[_activeEditorTabId].divId);
+        if (en) _showAutoHeadings(r);
+        else _hideAutoHeadings(r);
+    });
+
+    // ChildList observer: Syncfusion may re-add treeDiv → reorder
+    var orderObs = new MutationObserver(function () {
+        var td = opTab.querySelector('[id$="_editor_treeDiv"]');
+        if (td && !td.classList.contains('n-heading-panel')) {
+            _ahApplyLayout(opDiv, opTab, td);
+        }
+        _ahEnsureOrder(opTab);
+    });
+    orderObs.observe(opTab, { childList: true });
+
+    // Sync initial state
+    var cb2 = footer.querySelector('.n-auto-headings-cb');
+    if (cb2) {
+        cb2.checked = !!entry.autoHeadingsEnabled;
+        if (entry.autoHeadingsEnabled) _showAutoHeadings(root);
+    }
+    _ahSyncVisNow(root);
+}
+
+// ── Sync toggle + content (convenience wrapper) ─────────────────────
+function _syncAutoHeadingsState(root) {
+    var cb = root.querySelector('.n-auto-headings-cb');
+    if (!cb) return;
+    var enabled = _activeEditorTabId && _editors[_activeEditorTabId]
+        ? !!_editors[_activeEditorTabId].autoHeadingsEnabled : false;
+    cb.checked = enabled;
+    if (enabled) _showAutoHeadings(root);
+    else _hideAutoHeadings(root);
+}
+
+// ── Show auto-detected headings ──────────────────────────────────────
+function _showAutoHeadings(root) {
+    if (!root) return;
+    var treeDiv = root.querySelector('[id$="_editor_treeDiv"]');
+    if (!treeDiv) return;
+    var opTab = treeDiv.parentNode;
+
+    // Clear search filter on rebuild
+    var hsInput = opTab.querySelector('.n-heading-search-bar .n-hs-input');
+    var hsClear = opTab.querySelector('.n-heading-search-bar .n-hs-clear');
+    if (hsInput) hsInput.value = '';
+    if (hsClear) hsClear.classList.remove('visible');
+
+    var old = opTab.querySelector('.n-auto-headings-tree');
+    if (old) old.remove();
+
+    var headings = _detectAutoHeadings();
+
+    // If nothing detected (e.g. doc already has Heading N styles, so _detectAutoHeadings
+    // skips every block), fall back to the native Syncfusion heading list instead of
+    // hiding it and showing an empty-state. The toggle stays ON (user's preference
+    // preserved); it just becomes a no-op for styled docs.
+    if (headings.length === 0) {
+        treeDiv.removeAttribute('data-auto-hidden');
+        treeDiv.style.display = '';
+        return;
+    }
+
+    treeDiv.setAttribute('data-auto-hidden', 'true');
+    treeDiv.style.display = 'none';
+
+    var tree = document.createElement('div');
+    tree.className = 'n-auto-headings-tree n-heading-panel';
+    tree.style.flex = '1'; tree.style.overflowY = 'auto'; tree.style.minHeight = '0';
+    for (var i = 0; i < headings.length; i++) {
+        var h = headings[i];
+        var item = document.createElement('div');
+        item.className = 'n-auto-heading-item';
+        item.setAttribute('data-level', h.level);
+        item.textContent = h.text;
+        item.title = h.text;
+        item.addEventListener('click', (function (t) { return function () { _navigateToAutoHeading(t); }; })(h.text));
+        tree.appendChild(item);
+    }
+    var footer = opTab.querySelector('.n-auto-headings-footer');
+    if (footer) opTab.insertBefore(tree, footer);
+    else treeDiv.parentNode.insertBefore(tree, treeDiv.nextSibling);
+    _ahEnsureOrder(opTab);
+}
+
+// ── Hide auto-detected headings ──────────────────────────────────────
+function _hideAutoHeadings(root) {
+    if (!root) return;
+    var opTab = root.querySelector('.e-de-op-tab');
+    if (!opTab) return;
+    // Clear search filter
+    var hsInput = opTab.querySelector('.n-heading-search-bar .n-hs-input');
+    var hsClear = opTab.querySelector('.n-heading-search-bar .n-hs-clear');
+    if (hsInput) hsInput.value = '';
+    if (hsClear) hsClear.classList.remove('visible');
+    var tree = opTab.querySelector('.n-auto-headings-tree');
+    if (tree) tree.remove();
+    var treeDiv = root.querySelector('[id$="_editor_treeDiv"]');
+    if (treeDiv) { treeDiv.removeAttribute('data-auto-hidden'); treeDiv.style.display = ''; }
+    // Reset filter on manual heading items
+    _filterHeadingItems(opTab, '');
+}
+
+// ── Filter heading items by search query ────────────────────────────
+function _filterHeadingItems(opTab, query) {
+    if (!opTab) return;
+    var q = (query || '').toLowerCase().trim();
+    var shown = 0;
+
+    // Filter Syncfusion manual heading items (.e-list-item inside treeDiv)
+    var treeDiv = opTab.querySelector('[id$="_editor_treeDiv"]');
+    if (treeDiv && treeDiv.style.display !== 'none') {
+        var items = treeDiv.querySelectorAll('.e-list-item');
+        for (var i = 0; i < items.length; i++) {
+            var text = (items[i].textContent || '').toLowerCase();
+            var match = !q || text.indexOf(q) !== -1;
+            items[i].style.display = match ? '' : 'none';
+            if (match) shown++;
+        }
+    }
+
+    // Filter auto-detected heading items (.n-auto-heading-item)
+    var autoTree = opTab.querySelector('.n-auto-headings-tree');
+    if (autoTree) {
+        var autoItems = autoTree.querySelectorAll('.n-auto-heading-item');
+        for (var j = 0; j < autoItems.length; j++) {
+            var aText = (autoItems[j].textContent || '').toLowerCase();
+            var aMatch = !q || aText.indexOf(q) !== -1;
+            autoItems[j].style.display = aMatch ? '' : 'none';
+            if (aMatch) shown++;
+        }
+        // "No matching headings" message
+        var noMatch = autoTree.querySelector('.n-heading-no-match');
+        if (!noMatch) {
+            noMatch = document.createElement('div');
+            noMatch.className = 'n-heading-no-match';
+            noMatch.textContent = 'No matching headings.';
+            autoTree.appendChild(noMatch);
+        }
+        noMatch.style.display = (q && shown === 0) ? '' : 'none';
+    }
+}
+
+// ── Heading detection (unchanged logic) ──────────────────────────────
+function _detectAutoHeadings() {
+    if (!container) return [];
+    try {
+        var sfdt = JSON.parse(container.documentEditor.serialize());
+        var sections = sfdt.sections || sfdt.sec || [];
+        var results = [];
+        var fontSizes = {};
+
+        // First pass: find the most common font size (= body font size)
+        sections.forEach(function (sec) {
+            var blocks = sec.blocks || sec.b || [];
+            blocks.forEach(function (block) {
+                _collectFontSizes(block, fontSizes);
+            });
+        });
+        var bodyFontSize = 0;
+        var maxCount = 0;
+        for (var sz in fontSizes) {
+            if (fontSizes[sz] > maxCount) { maxCount = fontSizes[sz]; bodyFontSize = parseFloat(sz); }
+        }
+
+        // Second pass: detect heading-like paragraphs
+        var globalBlockIdx = 0;
+        for (var si = 0; si < sections.length; si++) {
+            var blocks = sections[si].blocks || sections[si].b || [];
+            for (var bi = 0; bi < blocks.length; bi++) {
+                var block = blocks[bi];
+                var inlines = block.inlines || block.i;
+                if (!inlines || inlines.length === 0) { globalBlockIdx++; continue; }
+
+                // Skip if this block already has a heading style
+                var pf = block.paragraphFormat || block.pf;
+                if (pf) {
+                    var sn = pf.styleName || pf.sn || '';
+                    if (/^Heading \d/i.test(sn)) { globalBlockIdx++; continue; }
+                }
+
+                var text = '';
+                var allBold = true;
+                var maxFS = 0;
+                var hasText = false;
+                for (var ii = 0; ii < inlines.length; ii++) {
+                    var inl = inlines[ii];
+                    var t = inl.text !== undefined ? inl.text : (inl.tlp !== undefined ? inl.tlp : '');
+                    if (!t) continue;
+                    hasText = true;
+                    text += t;
+                    var cf = inl.characterFormat || inl.cf || block.characterFormat || block.cf || {};
+                    if (!cf.bold && !cf.b) allBold = false;
+                    var fs = cf.fontSize || cf.fsz || 0;
+                    if (fs > maxFS) maxFS = fs;
+                }
+                text = text.trim();
+                if (!hasText || !text || text.length > 120) { globalBlockIdx++; continue; }
+
+                // Skip single-character or very short non-alpha paragraphs
+                if (text.length < 3) { globalBlockIdx++; continue; }
+
+                var level = _classifyHeading(text, allBold, maxFS, bodyFontSize);
+                if (level > 0) {
+                    results.push({ level: level, text: text, secIdx: si, blockIdx: bi, globalBlockIdx: globalBlockIdx });
+                }
+                globalBlockIdx++;
+            }
+        }
+        return results;
+    } catch (e) { console.warn('[AutoHeadings] detection error:', e); return []; }
+}
+
+function _collectFontSizes(block, sizes) {
+    var inlines = block.inlines || block.i;
+    if (inlines) {
+        for (var i = 0; i < inlines.length; i++) {
+            var t = inlines[i].text !== undefined ? inlines[i].text : (inlines[i].tlp !== undefined ? inlines[i].tlp : '');
+            if (!t || t.trim().length === 0) continue;
+            var cf = inlines[i].characterFormat || inlines[i].cf || block.characterFormat || block.cf || {};
+            var fs = cf.fontSize || cf.fsz || 0;
+            if (fs > 0) sizes[fs] = (sizes[fs] || 0) + t.length;
+        }
+    }
+    var rows = block.rows || block.r;
+    if (rows) {
+        rows.forEach(function (row) {
+            (row.cells || row.c || []).forEach(function (cell) {
+                (cell.blocks || cell.b || []).forEach(function (b) { _collectFontSizes(b, sizes); });
+            });
+        });
+    }
+}
+
+function _classifyHeading(text, allBold, maxFS, bodyFS) {
+    var isAllCaps = text === text.toUpperCase() && /[A-Z]/.test(text);
+
+    // Pattern: "Scheme 1", "Table 1", "Figure 1" → level 1
+    if (/^(Scheme|Table|Figure)\s+\d/i.test(text)) return 1;
+
+    // Pattern: numbered sub-section "2.1", "2.1.1" → level 3
+    if (/^\d+\.\s?\d+(\.\d+)?\s/.test(text)) return 3;
+
+    // Pattern: numbered section "1.", "2." → level 2
+    if (/^\d+\.\s+[A-Z]/.test(text)) return 2;
+
+    // ALL-CAPS short text → level 1
+    if (isAllCaps && text.length < 100 && text.length >= 3) return 1;
+
+    // Bold + larger than body → level 1
+    if (allBold && bodyFS > 0 && maxFS > bodyFS && text.length < 100) return 1;
+
+    // Bold + short paragraph (under 80 chars) → level 2
+    if (allBold && text.length < 80 && text.length >= 3) return 2;
+
+    return 0;
+}
+
+// Navigate to a detected heading by searching for its text.
+// Matches the native Syncfusion heading list: cursor moves to the heading,
+// no selection-highlight remains (search.find leaves the match selected,
+// so we collapse it to a zero-width cursor at the paragraph start).
+function _navigateToAutoHeading(headingText) {
+    if (!container || !headingText) return;
+    try {
+        // Use a unique-enough snippet (first 60 chars) to find the heading
+        var query = headingText.length > 60 ? headingText.substring(0, 60) : headingText;
+        var sel = container.documentEditor.selection;
+        // Move to document start so find() searches from the top
+        sel.moveToDocumentStart();
+        // find() selects the first match and scrolls it into view
+        container.documentEditor.search.find(query, 'None');
+        // Collapse the resulting selection so no highlight remains — the
+        // viewport has already scrolled to the match, we just drop the cursor
+        // at the start of the heading paragraph (native-list parity).
+        try { sel.moveToParagraphStart(); } catch (e) { /* non-fatal */ }
+    } catch (e) { console.warn('[AutoHeadings] navigate error:', e); }
+}
+
+
+// ══════════════════════════════════════════════════════════════════════════════
 // DOCUMENT NAME
 // ══════════════════════════════════════════════════════════════════════════════
 window.setDocumentName = function (name) {
@@ -1150,8 +1949,16 @@ window.checkAutoSaveRecovery = function () {
 
 window.loadRecoveredDraft = function (sfdt) {
     if (!container || !sfdt) return;
-    container.documentEditor.open(sfdt);
+    var entry = _editors[_activeEditorTabId];
+    if (entry) { entry.originalSfdt = sfdt; entry._loadingDocument = true; }
+    container.documentEditor.open(_sanitizeSfdtForOpen(sfdt));
+    _postOpenFieldStrip();
     container.documentEditor.focusIn();
+    _afterDocumentOpen();
+    if (entry) {
+        entry.editedSinceOpen = false;
+        setTimeout(function () { entry._loadingDocument = false; }, 100);
+    }
 };
 
 window.dismissAllDrafts = function () {
@@ -1420,20 +2227,228 @@ function _updateToggleBtn(btn, visible) {
     var iconWrap = btn.querySelector('.dev-cc-icon');
     if (visible) {
         btn.classList.add('active');
-        if (label) label.textContent = 'Tags On';
+        if (label) label.textContent = 'Tags';
         if (iconWrap) iconWrap.innerHTML =
-            '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">' +
+            '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">' +
                 '<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>';
     } else {
         btn.classList.remove('active');
-        if (label) label.textContent = 'Tags Off';
+        if (label) label.textContent = 'Tags';
         if (iconWrap) iconWrap.innerHTML =
-            '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">' +
+            '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">' +
                 '<path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/>' +
                 '<path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/>' +
                 '<path d="M14.12 14.12a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>';
     }
 }
+
+// ══════════════════════════════════════════════════════════════════════════
+// UNIFIED HEADER — Inject logo (left) + custom buttons (right) into ribbon
+// ══════════════════════════════════════════════════════════════════════════
+
+// Watch for the ribbon to appear and inject immediately (no setTimeout flash)
+function _watchForRibbon(divId) {
+    var editorDiv = document.getElementById(divId);
+    if (!editorDiv) return;
+
+    // Try immediately first (ribbon may already exist)
+    var tabHeader = editorDiv.querySelector('.e-tab-header');
+    if (tabHeader) {
+        _injectDeveloperTab(editorDiv);
+        _injectUnifiedHeader(editorDiv);
+        return;
+    }
+
+    // Otherwise watch for it via MutationObserver
+    var observer = new MutationObserver(function () {
+        var th = editorDiv.querySelector('.e-tab-header');
+        if (th) {
+            observer.disconnect();
+            _injectDeveloperTab(editorDiv);
+            _injectUnifiedHeader(editorDiv);
+        }
+    });
+    observer.observe(editorDiv, { childList: true, subtree: true });
+
+    // Safety timeout — disconnect observer after 10s even if ribbon never appeared
+    setTimeout(function () { observer.disconnect(); }, 10000);
+}
+
+function _injectUnifiedHeader(editorDiv) {
+    if (!editorDiv) return;
+    var tabHeader = editorDiv.querySelector('.e-tab-header');
+    if (!tabHeader || editorDiv.querySelector('.n-ribbon-header-row')) return;
+
+    var isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+
+    // ── Left group: logo image only (no text — logo includes the name) ──
+    var left = document.createElement('div');
+    left.className = 'n-ribbon-left';
+    left.innerHTML =
+        '<img src="_content/Deditor.Shared.UI/images/ProjectX_logo.png" alt="Logo" class="n-ribbon-logo-img" />';
+
+    // ── Right group: search, focus, theme, save, AI, chat, avatar ──
+    var right = document.createElement('div');
+    right.className = 'n-ribbon-right';
+    right.innerHTML =
+        // iPubEdit / Meta
+        '<button class="n-rbtn n-rbtn-meta" title="iPubEdit Meta Information" style="gap:5px;padding:4px 10px;font-weight:600;font-size:.73rem;">' +
+            '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">' +
+                '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>' +
+                '<polyline points="14 2 14 8 20 8"/>' +
+                '<line x1="9" y1="13" x2="15" y2="13"/>' +
+                '<line x1="9" y1="17" x2="13" y2="17"/>' +
+            '</svg>' +
+            '<span>iPubEdit Meta</span>' +
+        '</button>' +
+        '<span class="n-ribbon-divider"></span>' +
+        // Search
+        '<button class="n-rbtn n-rbtn-icon n-rbtn-search" title="Find & Replace (Ctrl+F)">' +
+            '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">' +
+                '<circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>' +
+            '</svg>' +
+        '</button>' +
+        // Focus mode
+        '<button class="n-rbtn n-rbtn-icon n-rbtn-focus" title="Focus Mode">' +
+            '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">' +
+                '<polyline points="4 14 4 20 10 20"/><polyline points="20 10 20 4 14 4"/>' +
+                '<line x1="14" y1="10" x2="20" y2="4"/><line x1="4" y1="20" x2="10" y2="14"/>' +
+            '</svg>' +
+        '</button>' +
+        '<span class="n-ribbon-divider"></span>' +
+        // Theme toggle
+        '<button class="n-rbtn n-rbtn-icon n-rbtn-theme" title="Toggle Theme">' +
+            (isDark
+                ? '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">' +
+                    '<circle cx="12" cy="12" r="5"/>' +
+                    '<line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/>' +
+                    '<line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>' +
+                    '<line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/>' +
+                    '<line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>' +
+                  '</svg>'
+                : '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">' +
+                    '<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>' +
+                  '</svg>') +
+        '</button>' +
+        // Save group
+        '<div class="n-ribbon-save-group">' +
+            '<button class="n-rbtn n-rbtn-icon n-rbtn-save" title="Save (Ctrl+S)">' +
+                '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">' +
+                    '<path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>' +
+                    '<polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/>' +
+                '</svg>' +
+            '</button>' +
+            '<span class="n-ribbon-divider"></span>' +
+            '<button class="n-rbtn n-rbtn-icon n-rbtn-saveas" title="Save As (Ctrl+Shift+S)">' +
+                '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">' +
+                    '<path d="M13 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v4"/>' +
+                    '<polyline points="7 3 7 8 15 8"/>' +
+                    '<path d="M17 21.5l4.5-4.5-2-2L15 19.5V21.5h2z"/>' +
+                '</svg>' +
+            '</button>' +
+        '</div>' +
+        '<span class="n-ribbon-divider"></span>' +
+        // AI Chat
+        '<button class="n-rbtn n-rbtn-ai" title="Toggle AI Assistant">' +
+            '<span class="n-ai-star">✦</span> AI' +
+        '</button>' +
+        // Avatar
+        '<div class="n-ribbon-avatar">U</div>';
+
+    // Build a flex wrapper row: [Logo] [File] [tab-header(tabs + right-buttons)]
+    // This avoids making .e-ribbon-tab itself flex (which breaks the content area below)
+    var ribbonTab = tabHeader.parentElement; // .e-ribbon-tab
+    var fileBtn = ribbonTab ? ribbonTab.querySelector('.e-ribbon-file-menu') : null;
+    var row = document.createElement('div');
+    row.className = 'n-ribbon-header-row';
+    row.appendChild(left);                 // 1. Logo
+    if (fileBtn) row.appendChild(fileBtn); // 2. File button (moved from ribbon-tab)
+    // 3. Tab header (moved from ribbon-tab into the row)
+    ribbonTab.insertBefore(row, tabHeader);
+    row.appendChild(tabHeader);
+    // Right buttons go inside the tab header (flex: 1 area)
+    tabHeader.appendChild(right);
+
+    // ── Wire click forwarding to hidden Blazor buttons ──
+    var fwd = function (cls, targetId) {
+        var btn = tabHeader.querySelector('.' + cls);
+        if (btn) btn.addEventListener('click', function (e) {
+            e.stopPropagation();
+            var t = document.getElementById(targetId);
+            if (t) t.click();
+        });
+    };
+    fwd('n-rbtn-meta', 'nBtnMeta');
+    fwd('n-rbtn-search', 'nBtnSearch');
+    fwd('n-rbtn-focus', 'nBtnFocusMode');
+    fwd('n-rbtn-theme', 'nBtnTheme');
+    fwd('n-rbtn-save', 'nBtnSave');
+    fwd('n-rbtn-saveas', 'btnSaveAs');
+    fwd('n-rbtn-ai', 'nBtnAiChat');
+
+    // ── Update padding-top on .e-de-ctn + CSS variable for sidebars ──
+    function _updateRibbonHeight() {
+        var ctnrRibbon = editorDiv.querySelector('.e-de-ctnr-ribbon');
+        var deCtn = editorDiv.querySelector('.e-de-ctn');
+        if (ctnrRibbon && deCtn) {
+            var h = ctnrRibbon.offsetHeight;
+            deCtn.style.paddingTop = h + 'px';
+            // Set CSS variable on :root so sidebars can use it for padding-top
+            document.documentElement.style.setProperty('--n-ribbon-h', h + 'px');
+        }
+    }
+    _updateRibbonHeight();
+
+    // ── Watch for ribbon height changes (tab switch, collapse/expand) ──
+    var ribbonEl = editorDiv.querySelector('.e-de-ctnr-ribbon');
+    if (ribbonEl) {
+        var _lastAppliedH = ribbonEl.offsetHeight;
+        var _roTimer = null;
+        var ribbonRO = new ResizeObserver(function () {
+            clearTimeout(_roTimer);
+            _roTimer = setTimeout(function () {
+                requestAnimationFrame(function () {
+                    var h = ribbonEl.offsetHeight;
+                    if (h !== _lastAppliedH && h > 0) {
+                        _lastAppliedH = h;
+                        _updateRibbonHeight();
+                        safeResize(3);
+                    }
+                });
+            }, 100);
+        });
+        ribbonRO.observe(ribbonEl);
+    }
+
+    console.log('[UnifiedHeader] Injected into ribbon tab header');
+}
+
+// ── State sync: called from Blazor after render ──
+window.syncRibbonHeader = function (state) {
+    // Update ALL instances (one per editor tab)
+    document.querySelectorAll('.n-rbtn-search').forEach(function (b) { b.classList.toggle('active', !!state.navPaneOpen); });
+    document.querySelectorAll('.n-rbtn-ai').forEach(function (b) { b.classList.toggle('active', !!state.chatOpen); });
+
+    // Theme icon + logo
+    var isDark = !!state.isDark;
+    var sunSvg = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">' +
+                    '<circle cx="12" cy="12" r="5"/>' +
+                    '<line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/>' +
+                    '<line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>' +
+                    '<line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/>' +
+                    '<line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>' +
+                 '</svg>';
+    var moonSvg = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">' +
+                    '<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>' +
+                  '</svg>';
+    var themeHtml = isDark ? sunSvg : moonSvg;
+    var themeTitle = isDark ? 'Switch to Light Mode' : 'Switch to Dark Mode';
+    document.querySelectorAll('.n-rbtn-theme').forEach(function (b) {
+        b.title = themeTitle;
+        b.innerHTML = themeHtml;
+    });
+
+};
 
 // ── Design Mode: Insert/remove visible [tag] markers in document ────────
 var _CC_COLOR = '#2383E2';
@@ -1441,8 +2456,8 @@ var _CC_COLOR = '#2383E2';
 // ── Pill-style tag marker formatting ──
 // Markers are invisible in SFDT (white text, no highlight) — visual pills are HTML overlays
 // The text runs still occupy space for offset calculations and search-based positioning
-var _MARKER_CF_OPEN  = { "fsz": 7, "fc": "#4A4A4A", "hc": 1, "fn": "Consolas" };
-var _MARKER_CF_CLOSE = { "fsz": 7, "fc": "#4A4A4A", "hc": 1, "fn": "Consolas" };
+var _MARKER_CF_OPEN  = { "fsz": 9, "fc": "#2383E2", "hc": "#d2e4faff", "fn": "Consolas", "b": true };
+var _MARKER_CF_CLOSE = { "fsz": 9, "fc": "#2383E2", "hc": "#d2e4faff", "fn": "Consolas", "b": true };
 var _MARKER_CF = _MARKER_CF_OPEN;
 // Unique zero-width marker prefix so strip logic can identify our markers reliably
 var _MARKER_PREFIX = '\u200B';
@@ -1590,6 +2605,9 @@ function _applyTagVisibility(visible) {
             de.focusIn();
             _setTabTagsVisible(visible);
 
+            // de.open() closes the nav pane — sync search button
+            _markNavPaneClosed(capturedTabId);
+
             console.log('[Toggle:' + seq + '] ── Total: ' + (performance.now() - t0).toFixed(0) + 'ms ──');
 
             // Restore Developer tab after de.open() — pass frozen references
@@ -1669,9 +2687,198 @@ function _restoreDevTab(capturedTabId, capturedDivId, seq) {
             _updateToggleBtn(btn, vis);
             _ccToggleBusy = false;
             _showToggleOverlay(capturedDivId, false);
+            // Clean tag markers from Navigation pane headings
+            setTimeout(_cleanNavigationHeadings, 200);
+            setTimeout(function () { _setupNavCleanObserver(); }, 500);
             console.log('[Toggle:' + seq + '] Dev tab restored for ' + capturedTabId.substring(0, 8) + ', busy lock released');
         }, 250);
     }, 100);
+}
+
+// ── Clean tag markers from Navigation pane headings ──
+// Markers are emitted by _insertTagMarkers as \u200B + tag-text (no whitespace)
+// followed by a spacer run of ' '. Syncfusion's heading extractor concatenates
+// every inline's text, so marker+spacer leaks into .e-list-text. Strip both.
+var _NAV_MARKER_RE = /\u200B\S*\s?/g;
+var _ZWS_RE = /\u200B/g;
+
+function _cleanNavigationHeadings() {
+    // Find ALL navigation/options panes (one per editor tab)
+    var panes = document.querySelectorAll('.e-documenteditor-optionspane');
+    for (var p = 0; p < panes.length; p++) {
+        var items = panes[p].querySelectorAll('.e-list-text');
+        for (var i = 0; i < items.length; i++) {
+            var text = items[i].textContent || '';
+            if (_NAV_MARKER_RE.test(text) || _ZWS_RE.test(text)) {
+                _NAV_MARKER_RE.lastIndex = 0;
+                _ZWS_RE.lastIndex = 0;
+                var cleaned = text.replace(_NAV_MARKER_RE, '').replace(_ZWS_RE, '').trim();
+                items[i].textContent = cleaned;
+                // Also clean the tooltip on the parent .e-list-item
+                var listItem = items[i].closest('.e-list-item');
+                if (listItem && listItem.title) {
+                    _NAV_MARKER_RE.lastIndex = 0;
+                    _ZWS_RE.lastIndex = 0;
+                    listItem.title = listItem.title.replace(_NAV_MARKER_RE, '').replace(_ZWS_RE, '').trim();
+                }
+            }
+            _NAV_MARKER_RE.lastIndex = 0;
+            _ZWS_RE.lastIndex = 0;
+        }
+    }
+}
+
+function _setupNavCleanObserver() {
+    // Attach a per-tab observer so each editor tab's pane is watched
+    if (!_activeEditorTabId || !_editors[_activeEditorTabId]) return;
+    var entry = _editors[_activeEditorTabId];
+    if (entry._navCleanObserver) return; // already watching this tab
+    var root = document.getElementById(entry.divId);
+    if (!root) return;
+    var target = root.querySelector('.e-documenteditor-optionspane');
+    if (!target) return;
+    entry._navCleanObserver = new MutationObserver(function () {
+        _cleanNavigationHeadings();
+    });
+    entry._navCleanObserver.observe(target, { childList: true, subtree: true, characterData: true });
+    _cleanNavigationHeadings(); // initial clean
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// SFDT field-instruction sanitizer — Zotero / Word field rendering workaround
+// ────────────────────────────────────────────────────────────────────────────
+// Syncfusion's DocumentEditor v32.1.x renders the text between field-begin
+// ({ft:0}) and field-separator ({ft:2}) — i.e. the field instruction code —
+// as visible text instead of hiding it. In narrow two-column layouts this
+// overflows and overlaps neighbouring runs (see ao5c04145.docx). Word, Word
+// Online and LibreOffice all hide instruction runs; Syncfusion does not.
+//
+// Fix: before handing SFDT to documentEditor.open(), walk each inline array
+// and remove runs sandwiched between {ft:0} and {ft:2}. Leave the ft:0, ft:2,
+// and ft:1 markers themselves untouched so the field skeleton survives.
+//
+// Round-trip: the caller is expected to stash the original (pre-sanitize)
+// SFDT on the editor entry as `originalSfdt`; on save, getDocumentContent()
+// returns that pristine copy when the document hasn't been edited, which
+// keeps Zotero field instructions intact for plugin round-trip. If the user
+// edited the document, we fall back to the live (sanitized) serialize —
+// in-session edits forfeit Zotero round-trip fidelity, by design.
+// ────────────────────────────────────────────────────────────────────────────
+function _stripFieldInstructions(sfdtObj) {
+    var stripped = 0;
+    var visited = new WeakSet();
+
+    function cleanInlines(arr) {
+        if (!Array.isArray(arr)) return;
+        var i = 0;
+        while (i < arr.length) {
+            var item = arr[i];
+            // Field begin marker: {ft:0} (often co-present with hfe, fpd, etc.)
+            if (item && typeof item === 'object' && item.ft === 0) {
+                // Look ahead for the matching separator (ft:2). Stop at field-end
+                // (ft:1) too — a field with no separator has no instruction to strip.
+                var j = i + 1;
+                while (j < arr.length) {
+                    var mid = arr[j];
+                    if (mid && typeof mid === 'object' && (mid.ft === 2 || mid.ft === 1)) break;
+                    j++;
+                }
+                if (j < arr.length && arr[j].ft === 2 && j > i + 1) {
+                    // Splice out the instruction runs between begin and separator.
+                    // Skeleton (ft:0 ... ft:2 ... result ... ft:1) stays intact.
+                    var removed = j - i - 1;
+                    arr.splice(i + 1, removed);
+                    stripped += removed;
+                }
+            }
+            i++;
+        }
+    }
+
+    function walk(obj) {
+        if (!obj || typeof obj !== 'object' || visited.has(obj)) return;
+        visited.add(obj);
+        if (Array.isArray(obj)) {
+            var looksLikeInlines = obj.length > 0 && obj.some(function (item) {
+                return item && typeof item === 'object' && ('tlp' in item || 'ft' in item);
+            });
+            if (looksLikeInlines) cleanInlines(obj);
+            for (var i = 0; i < obj.length; i++) walk(obj[i]);
+            return;
+        }
+        var keys = Object.keys(obj);
+        for (var k = 0; k < keys.length; k++) {
+            var v = obj[keys[k]];
+            if (v && typeof v === 'object') walk(v);
+        }
+    }
+
+    walk(sfdtObj);
+    return stripped;
+}
+
+// Parse → strip → stringify. On any failure returns the input unchanged so
+// the open() flow can't regress on malformed SFDT. No-op (returns original
+// reference) when zero runs are stripped, to avoid a wasted stringify.
+function _sanitizeSfdtForOpen(sfdt) {
+    if (!sfdt) return sfdt;
+    var isString = (typeof sfdt === 'string');
+    // Fast-path: raw SFDT string with no {ft:0} literally — nothing to strip.
+    // NB: Syncfusion's "optimized SFDT" envelope (`{"sfdt":"UEsDB..."}` — a base64
+    // ZIP) also lacks a literal `"ft":0`, so that format falls into this fast
+    // path too. The post-open sanitizer below catches it: once the editor has
+    // decoded the envelope, `serialize()` yields plain JSON SFDT that DOES
+    // contain the markers, and we strip + re-open on that expanded form.
+    if (isString && sfdt.indexOf('"ft":0') === -1 && sfdt.indexOf('"ft": 0') === -1) {
+        return sfdt;
+    }
+    var obj;
+    try {
+        obj = isString ? JSON.parse(sfdt) : sfdt;
+    } catch (e) {
+        console.warn('[Render] SFDT parse failed in field sanitizer, passing through:', e);
+        return sfdt;
+    }
+    var start = performance.now();
+    var n = _stripFieldInstructions(obj);
+    if (n > 0) {
+        console.log('[Render] Stripped ' + n + ' field-instruction run(s) in ' + (performance.now() - start).toFixed(0) + 'ms');
+        return isString ? JSON.stringify(obj) : obj;
+    }
+    return sfdt;
+}
+
+// Post-open companion to _sanitizeSfdtForOpen. Covers the case where the input
+// to open() was the optimized (base64-ZIP) SFDT envelope — the pre-open
+// sanitizer can't see inline `"ft":0` markers inside the base64 blob, so it's a
+// no-op. Once the editor has decoded + parsed the envelope, `serialize()`
+// returns the expanded JSON SFDT where the markers are literal strings. We
+// strip instruction runs on that expanded form and re-open to force the
+// renderer to discard the offending internal model. Idempotent: a second call
+// after a successful strip+reopen finds nothing further to strip and is a
+// cheap no-op (indexOf returns > -1 but the stripper removes zero runs).
+//
+// Callers must run this while `_loadingDocument` is still true so the
+// synthetic `contentChange` from the re-open doesn't flip `editedSinceOpen`.
+function _postOpenFieldStrip() {
+    if (!container || !container.documentEditor) return 0;
+    var live;
+    try { live = container.documentEditor.serialize(); }
+    catch (e) { console.warn('[Render] post-open serialize failed:', e); return 0; }
+    if (!live || live.indexOf('"ft":0') === -1) return 0;
+    var obj;
+    try { obj = JSON.parse(live); }
+    catch (e) { console.warn('[Render] post-open SFDT parse failed:', e); return 0; }
+    var start = performance.now();
+    var n = _stripFieldInstructions(obj);
+    if (n > 0) {
+        var reopen = JSON.stringify(obj);
+        console.log('[Render] Post-open stripped ' + n + ' field-instruction run(s) in ' + (performance.now() - start).toFixed(0) + 'ms; re-opening (' + Math.round(reopen.length / 1024) + 'KB)');
+        var reopenStart = performance.now();
+        container.documentEditor.open(reopen);
+        console.log('[Render] post-open re-open() took ' + (performance.now() - reopenStart).toFixed(0) + 'ms');
+    }
+    return n;
 }
 
 // Strip tag marker text runs from SFDT (reverse of _insertTagMarkers)
@@ -1688,8 +2895,12 @@ function _stripTagMarkers(sfdt) {
         // Fallback: match by CF signature (supports both old and new marker formats)
         var cf = inline.cf;
         if (!cf) return false;
-        // Current format (dark gray text, yellow highlight)
+        // Current format (blue text, no highlight)
         if (cf.fsz === _MARKER_CF.fsz && cf.fc === _MARKER_CF.fc && cf.hc === _MARKER_CF.hc) return true;
+        // Legacy: blue text, turquoise highlight (fc:#2383E2, hc:3, fsz:7)
+        if (cf.fsz === 7 && cf.fc === '#2383E2' && cf.hc === 3) return true;
+        // Legacy: dark gray text, yellow highlight (fc:#4A4A4A, hc:1, fsz:7)
+        if (cf.fsz === 7 && cf.fc === '#4A4A4A' && cf.hc === 1) return true;
         // Legacy: blue text, red highlight (fc:#2B79C2, hc:6, fsz:7)
         if (cf.fsz === 7 && cf.fc === '#2B79C2' && cf.hc === 6) return true;
         // Legacy: white invisible markers (fc:#FFFFFF, hc:0, fsz:6.5)
@@ -1784,26 +2995,35 @@ function _insertTagMarkers(sfdt) {
                 ccp.lcc = false;  // lockContentControl = false
                 ccp.lc = false;   // lockContents = false
 
-                // Shorten tag name for display (e.g. "#book-part;id=2;type=chapter;" → "book-part")
-                var shortTag = _shortTagName(tag);
+                // Show opening tag BEFORE content and closing tag AFTER content.
+                // e.g. tag="#book-part;id=2;type=chapter;" →
+                //   open  = "#book-part;id=2;type=chapter;"
+                //   close = "#/book-part;"
+                // For plain tags (no leading '#'), close is "/<tag>" (e.g. BOOK_TITLE → /BOOK_TITLE).
+                var openTag  = tag;
+                var closeTag;
+                if (tag.charAt(0) === '#') {
+                    closeTag = '#/' + _shortTagName(tag) + ';';
+                } else {
+                    closeTag = '/' + tag;
+                }
 
-                // Find the inlines array to insert markers into
-                var inlines = _findFirstInlines(obj);
-                var lastInlines = _findLastInlines(obj);
+                // Opening marker on the first inlines array (same as before)
+                var firstInlines = _findFirstInlines(obj);
+                var lastInlines  = _findLastInlines(obj);
 
-                if (inlines) {
-                    // Prepend opening pill marker:  ❮tagname❯  (compact, monospace)
-                    inlines.unshift(
-                        { tlp: _MARKER_PREFIX + '\u276E' + shortTag + '\u276F', cf: _MARKER_CF_OPEN },
-                        { tlp: ' ', cf: { "bi": false } }  // spacer after pill
+                if (firstInlines) {
+                    firstInlines.unshift(
+                        { tlp: _MARKER_PREFIX + openTag, cf: _MARKER_CF_OPEN },
+                        { tlp: ' ', cf: { "bi": false } }  // spacer after opening pill
                     );
                     count++;
                 }
+                // Append closing marker to the last inlines array (handles block + inline CCs)
                 if (lastInlines) {
-                    // Append closing pill marker:  ❮tagname❯
                     lastInlines.push(
-                        { tlp: ' ', cf: { "bi": false } },  // spacer before pill
-                        { tlp: _MARKER_PREFIX + '\u276E' + shortTag + '\u276F', cf: _MARKER_CF_CLOSE }
+                        { tlp: ' ', cf: { "bi": false } }, // spacer before closing pill
+                        { tlp: _MARKER_PREFIX + closeTag, cf: _MARKER_CF_CLOSE }
                     );
                 }
             }
@@ -2131,10 +3351,18 @@ window.loadManuscriptResult = function (sfdt) {
     if (!container || !sfdt) return;
     showLoader('Loading AI suggestions…');
     try {
-        container.documentEditor.open(sfdt);
+        var entry = _editors[_activeEditorTabId];
+        if (entry) { entry.originalSfdt = sfdt; entry._loadingDocument = true; }
+        container.documentEditor.open(_sanitizeSfdtForOpen(sfdt));
+        _postOpenFieldStrip();
+        if (entry) {
+            entry.editedSinceOpen = false;
+            setTimeout(function () { entry._loadingDocument = false; }, 100);
+        }
         container.documentEditor.enableTrackChanges = true;
         container.documentEditor.showRevisions = true;
         container.documentEditor.focusIn();
+        _afterDocumentOpen();
         console.log('[Manuscript] Loaded comparison document with track changes');
 
         // Open the track changes review pane after document renders
@@ -2179,4 +3407,227 @@ window.loadManuscriptResult = function (sfdt) {
         console.error('[Manuscript] Failed to load comparison:', e);
     }
     hideLoader();
+};
+// ══════════════════════════════════════════════════════════════════════
+// iPubEdit Meta Information — document-aware metadata persistence + editor binding
+// ══════════════════════════════════════════════════════════════════════
+var _IPUB_META_PREFIX = 'ipubedit.meta.';          // keyed by documentId (tabId)
+var _IPUB_META_LEGACY = 'ipubedit.meta';           // old single-key blob (migrated on read)
+
+// Normalize a CC tag for lookup: strip "#", drop ";…attributes", lowercase,
+// dashes → underscores. "#book-part;id=2" → "book_part".
+function _ipubNormalizeTag(rawTag) {
+    if (!rawTag) return '';
+    var s = _shortTagName(rawTag);      // strips leading "#" and ";..." attributes
+    return s.toLowerCase().replace(/-/g, '_');
+}
+
+// Tag → metadata field resolver. Keys are post-_ipubNormalizeTag.
+// Accepts both the user's UPPER_SNAKE style (BOOK_TITLE) and JATS kebab (book-title).
+var _IPUB_TAG_FIELD = {
+    'book_title':           'BookTitle',
+    'isbn':                 'Isbn',
+    'doi':                  'Doi',
+    'publisher':            'Publisher',
+    'publisher_name':       'Publisher',
+    'publisher_imprint':    'PublisherImprint',
+    'journal_name':         'JournalName',
+    'journal_title':        'JournalTitle',
+    'p_issn':               'PIssn',
+    'pissn':                'PIssn',
+    'issn':                 'PIssn',
+    'e_issn':               'EIssn',
+    'eissn':                'EIssn',
+    'article_id':           'ArticleId',
+    'article_type':         'ArticleType',
+    'document_type':        'DocumentType',
+    'year':                 'Year',
+    'pub_year':             'Year',
+    'month':                'Month',
+    'pub_month':            'Month',
+    'country':              'Country',
+    'copyrights':           'Copyrights',
+    'copyright_statement':  'Copyrights',
+    'dtd':                  'Dtd',
+    'job_card':             'JobCard',
+    'ce_template':          'CeTemplate',
+    'book_id':              'BookOrJournalId',
+    'journal_id':           'BookOrJournalId',
+    'pagination_platform':  'PaginationPlatform',
+    'article_title':        'ArticleTitle',
+    'chapter_title':        'ChapterTitle',
+    'volume':               'Volume',
+    'issue':                'Issue',
+    'fpage':                'FirstPage',
+    'first_page':           'FirstPage',
+    'lpage':                'LastPage',
+    'last_page':            'LastPage',
+    'elocation_id':         'ElocationId',
+    'edition':              'Edition',
+    'series':               'Series',
+    'day':                  'Day',
+    'pub_day':              'Day',
+    'publisher_loc':        'PublisherLoc'
+};
+
+// Pull a value from meta by field name, tolerating PascalCase or camelCase keys.
+function _ipubGetMetaValue(meta, field) {
+    if (!meta || !field) return '';
+    if (meta[field] != null) return String(meta[field]);
+    var lc = field.charAt(0).toLowerCase() + field.substring(1);
+    if (meta[lc] != null) return String(meta[lc]);
+    return '';
+}
+
+// Apply metadata to the active editor's content controls.
+// Walks the serialized SFDT tree, matches each CC's tag to a metadata field,
+// and rewrites the first inlines array inside the CC with the new value.
+// Preserves the first non-marker run's char formatting (cf) so fonts survive.
+// Returns { replaced, skipped, unmapped: [..up to 3 tag names..] }.
+window.applyMetadata = function (meta) {
+    if (!meta) return { replaced: 0, skipped: 0, unmapped: [] };
+    if (!container || !container.documentEditor) {
+        console.warn('[iPubEdit] No active editor — skipping applyMetadata');
+        return { replaced: 0, skipped: 0, unmapped: [] };
+    }
+    var de = container.documentEditor;
+    var sfdtStr;
+    try { sfdtStr = de.serialize(); }
+    catch (e) { console.warn('[iPubEdit] serialize() failed', e); return { replaced: 0, skipped: 0, unmapped: [] }; }
+    var parsed;
+    try { parsed = typeof sfdtStr === 'string' ? JSON.parse(sfdtStr) : sfdtStr; }
+    catch (e) { console.warn('[iPubEdit] parse SFDT failed', e); return { replaced: 0, skipped: 0, unmapped: [] }; }
+
+    // Strip any tag-view marker runs so we don't overwrite real text with marker pills
+    try { _stripTagMarkers(parsed); } catch (e) {}
+
+    var updated = 0;
+    var skipped = 0;
+    var unmapped = [];
+    var visited = new WeakSet();
+
+    function walk(obj) {
+        if (!obj || typeof obj !== 'object' || visited.has(obj)) return;
+        visited.add(obj);
+        if (Array.isArray(obj)) { for (var i = 0; i < obj.length; i++) walk(obj[i]); return; }
+
+        var ccp = obj.ccp || obj.contentControlProperties;
+        if (ccp && typeof ccp === 'object' && !Array.isArray(ccp)) {
+            var rawTag = ccp.tg || ccp.tag || ccp.tt || ccp.title || '';
+            var key = _ipubNormalizeTag(rawTag);
+            var field = key ? _IPUB_TAG_FIELD[key] : null;
+            if (field) {
+                var inlines = _findFirstInlines(obj);
+                if (inlines) {
+                    var value = _ipubGetMetaValue(meta, field);
+                    // Harvest cf from the first non-marker run so font/size survive
+                    var preservedCf = {};
+                    for (var j = 0; j < inlines.length; j++) {
+                        var r = inlines[j];
+                        var t = r && (r.tlp != null ? r.tlp : r.text);
+                        if (typeof t === 'string' && t.charAt(0) !== _MARKER_PREFIX && r.cf) {
+                            preservedCf = r.cf;
+                            break;
+                        }
+                    }
+                    // Replace inlines with a single run carrying the new value
+                    inlines.length = 0;
+                    inlines.push({ tlp: value, cf: preservedCf });
+                    updated++;
+                } else {
+                    skipped++;
+                }
+            } else if (rawTag) {
+                skipped++;
+                if (unmapped.length < 3) unmapped.push(rawTag);
+            }
+        }
+
+        var keys = Object.keys(obj);
+        for (var k = 0; k < keys.length; k++) {
+            var v = obj[keys[k]];
+            if (v && typeof v === 'object') walk(v);
+        }
+    }
+
+    try { walk(parsed); }
+    catch (e) { console.warn('[iPubEdit] CC walk failed', e); return { replaced: 0, skipped: 0, unmapped: [] }; }
+
+    if (updated > 0) {
+        try {
+            de.open(JSON.stringify(parsed));
+            // If the user had tag-view on for this tab, re-apply markers after re-open
+            try {
+                var ts = (typeof _getTabState === 'function') ? _getTabState() : null;
+                if (ts && ts.ccTagsVisible && typeof _applyTagVisibility === 'function') {
+                    _applyTagVisibility(true);
+                }
+            } catch (eInner) {}
+        } catch (e) {
+            console.warn('[iPubEdit] de.open() after CC rewrite failed', e);
+        }
+    }
+
+    console.log('[iPubEdit] applied ' + updated + ' value(s) to content control(s); '
+        + 'skipped ' + skipped + ' unmapped tag(s)'
+        + (unmapped.length ? ' e.g. ' + unmapped.join(', ') : ''),
+        meta);
+    return { replaced: updated, skipped: skipped, unmapped: unmapped };
+};
+
+// Backwards-compat alias — old callers that wanted a simple count.
+window.ipubReplaceTokens = function (meta) {
+    var res = window.applyMetadata(meta);
+    return res ? (res.replaced || 0) : 0;
+};
+
+// Save metadata keyed by document id (tabId). documentId is REQUIRED for
+// per-document persistence; callers pass the active tabId from Blazor.
+window.saveIPubEditMeta = function (documentId, meta) {
+    if (!documentId) {
+        console.warn('[iPubEdit] saveIPubEditMeta called without documentId — aborting');
+        return false;
+    }
+    try {
+        var payload = Object.assign({}, meta, {
+            _documentId: documentId,
+            _savedAt: new Date().toISOString()
+        });
+        localStorage.setItem(_IPUB_META_PREFIX + documentId, JSON.stringify(payload));
+        console.log('[iPubEdit] Saved meta for doc ' + documentId, payload);
+    } catch (e) {
+        console.warn('[iPubEdit] localStorage save failed', e);
+        return false;
+    }
+    try { window.applyMetadata(meta); } catch (e) {}
+    return true;
+};
+
+// Load metadata for a specific document. Falls back to the legacy global blob
+// (one-time migration) if no per-doc entry exists.
+window.loadIPubEditMeta = function (documentId) {
+    if (!documentId) return null;
+    try {
+        var raw = localStorage.getItem(_IPUB_META_PREFIX + documentId);
+        if (raw) return JSON.parse(raw);
+        // Legacy fallback — pull the old single-key blob, stash it under this doc, then clear it
+        var legacy = localStorage.getItem(_IPUB_META_LEGACY);
+        if (legacy) {
+            try {
+                var parsed = JSON.parse(legacy);
+                localStorage.setItem(_IPUB_META_PREFIX + documentId, legacy);
+                localStorage.removeItem(_IPUB_META_LEGACY);
+                return parsed;
+            } catch (e) {}
+        }
+        return null;
+    } catch (e) {
+        return null;
+    }
+};
+
+// Delete metadata for a document (e.g. on tab close if desired)
+window.deleteIPubEditMeta = function (documentId) {
+    if (!documentId) return;
+    try { localStorage.removeItem(_IPUB_META_PREFIX + documentId); } catch (e) {}
 };

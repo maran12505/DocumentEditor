@@ -13,6 +13,11 @@
   <ItemGroup>
     <PackageReference Include="Microsoft.AspNetCore.Components.Web" Version="10.0.1" />
     <PackageReference Include="Syncfusion.Licensing" Version="32.1.52" />
+    <PackageReference Include="Syncfusion.Blazor.Core" Version="32.2.3" />
+    <PackageReference Include="Syncfusion.Blazor.DropDowns" Version="32.2.3" />
+    <PackageReference Include="Syncfusion.Blazor.Inputs" Version="32.2.3" />
+    <PackageReference Include="Syncfusion.Blazor.Buttons" Version="32.2.3" />
+    <PackageReference Include="Syncfusion.Blazor.Themes" Version="32.2.3" />
   </ItemGroup>
 
   <ItemGroup>
