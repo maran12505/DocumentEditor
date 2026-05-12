@@ -18,12 +18,12 @@ namespace Deditor.Core.Services.Interfaces
         /// <summary>
         /// Save SFDT content to a document stream in the format determined by the file extension.
         /// </summary>
-        Stream Save(string sfdtContent, string fileName);
+        Task<Stream> SaveAsync(string sfdtContent, string fileName);
 
         /// <summary>
         /// Convert system clipboard content (HTML/RTF) to SFDT for pasting into the editor.
         /// </summary>
-        string SystemClipboard(string content, string type);
+        Task<string> SystemClipboardAsync(string content, string type);
 
         /// <summary>
         /// Process a metafile/image service request from the Syncfusion editor.

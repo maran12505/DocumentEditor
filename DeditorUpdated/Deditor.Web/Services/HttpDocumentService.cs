@@ -33,29 +33,27 @@ namespace Deditor.Web.Services
             return await response.Content.ReadAsStringAsync();
         }
 
-        public Stream Save(string sfdtContent, string fileName)
+        public async Task<Stream> SaveAsync(string sfdtContent, string fileName)
         {
-            // For WASM, we need to call the server synchronously-ish.
-            // Use a blocking call since this is called from sync context in Razor.
-            var response = _http.PostAsJsonAsync("api/documenteditor/save",
-                new { Content = sfdtContent, FileName = fileName }).Result;
+            var response = await _http.PostAsJsonAsync("api/documenteditor/save",
+                new { Content = sfdtContent, FileName = fileName });
 
             if (!response.IsSuccessStatusCode)
                 throw new HttpRequestException("Save failed on server.");
 
-            var bytes = response.Content.ReadAsByteArrayAsync().Result;
+            var bytes = await response.Content.ReadAsByteArrayAsync();
             return new MemoryStream(bytes);
         }
 
-        public string SystemClipboard(string content, string type)
+        public async Task<string> SystemClipboardAsync(string content, string type)
         {
-            var response = _http.PostAsJsonAsync("api/documenteditor/systemclipboard",
-                new { Content = content, Type = type }).Result;
+            var response = await _http.PostAsJsonAsync("api/documenteditor/systemclipboard",
+                new { Content = content, Type = type });
 
             if (!response.IsSuccessStatusCode)
                 return string.Empty;
 
-            return response.Content.ReadAsStringAsync().Result;
+            return await response.Content.ReadAsStringAsync();
         }
 
         public string ServiceBase(string? imageData, string? action)

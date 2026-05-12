@@ -124,23 +124,23 @@ namespace Deditor.Core.Services
             return sfdt;
         }
 
-        public Stream Save(string sfdtContent, string fileName)
+        public Task<Stream> SaveAsync(string sfdtContent, string fileName)
         {
             FormatType fmt = GetFormatType(fileName);
-            return WordDocument.Save(sfdtContent, fmt);
+            return Task.FromResult(WordDocument.Save(sfdtContent, fmt));
         }
 
-        public string SystemClipboard(string content, string type)
+        public Task<string> SystemClipboardAsync(string content, string type)
         {
-            if (string.IsNullOrEmpty(content)) return string.Empty;
+            if (string.IsNullOrEmpty(content)) return Task.FromResult(string.Empty);
             try
             {
                 WordDocument document = WordDocument.LoadString(content, GetClipboardFormat(type));
                 string sfdt = JsonConvert.SerializeObject(document);
                 document.Dispose();
-                return sfdt;
+                return Task.FromResult(sfdt);
             }
-            catch { return string.Empty; }
+            catch { return Task.FromResult(string.Empty); }
         }
 
         public string ServiceBase(string? imageData, string? action)
@@ -234,140 +234,22 @@ namespace Deditor.Core.Services
 
                     Console.WriteLine($"[ExtractIPubMeta]    root element = {xdoc.Root?.Name.LocalName} (ns={xdoc.Root?.Name.NamespaceName})");
 
-                    int descendantCount = 0;
+                    var variant = DetectSchemaVariant(xdoc);
+                    Console.WriteLine($"[ExtractIPubMeta]    [strategy={variant}] dispatching");
+
                     int partMatches = 0;
-                    foreach (var el in xdoc.Descendants())
+                    int strategyMatches = variant switch
                     {
-                        descendantCount++;
-                        var localName = el.Name.LocalName;
-                        if (string.IsNullOrEmpty(localName)) continue;
+                        SchemaVariant.Jats          => RunJatsStrategy(xdoc, dto),
+                        SchemaVariant.ICoreJournal  => RunICoreJournalStrategy(xdoc, dto),
+                        SchemaVariant.ICoreBook     => 0, // covered entirely by element map
+                        _                           => 0,
+                    };
+                    if (strategyMatches > 0) { any = true; partMatches += strategyMatches; matchedFields += strategyMatches; }
 
-                        // Special-case <article ...> — JATS root carries metadata in attributes:
-                        //   article-type → ArticleType, dtd-version → Dtd, xml:lang → Language
-                        if (localName.Equals("article", StringComparison.OrdinalIgnoreCase))
-                        {
-                            var articleType = (string?)el.Attribute("article-type");
-                            if (!string.IsNullOrWhiteSpace(articleType) && string.IsNullOrEmpty(dto.ArticleType))
-                            {
-                                dto.ArticleType = articleType.Trim(); any = true; partMatches++; matchedFields++;
-                                Console.WriteLine($"[ExtractIPubMeta]    [MATCH attr]     <article article-type='{articleType}'> -> ArticleType");
-                            }
-                            var dtdVersion = (string?)el.Attribute("dtd-version");
-                            if (!string.IsNullOrWhiteSpace(dtdVersion) && string.IsNullOrEmpty(dto.Dtd))
-                            {
-                                dto.Dtd = dtdVersion.Trim(); any = true; partMatches++; matchedFields++;
-                                Console.WriteLine($"[ExtractIPubMeta]    [MATCH attr]     <article dtd-version='{dtdVersion}'> -> Dtd");
-                            }
-                            var lang = (string?)el.Attribute(XNamespace.Xml + "lang");
-                            if (!string.IsNullOrWhiteSpace(lang) && string.IsNullOrEmpty(dto.Language))
-                            {
-                                dto.Language = lang.Trim(); any = true; partMatches++; matchedFields++;
-                                Console.WriteLine($"[ExtractIPubMeta]    [MATCH attr]     <article xml:lang='{lang}'> -> Language");
-                            }
-                            // fall through — no element-text mapping for <article>
-                        }
+                    int fallbackMatches = RunGenericFallback(xdoc, dto, out int descendantCount);
+                    if (fallbackMatches > 0) { any = true; partMatches += fallbackMatches; matchedFields += fallbackMatches; }
 
-                        // Special-case <journal-id journal-id-type="publisher|publisher-id|...">
-                        if (localName.Equals("journal-id", StringComparison.OrdinalIgnoreCase) && !el.HasElements)
-                        {
-                            var v = (el.Value ?? string.Empty).Trim();
-                            if (v.Length > 0 && !IsTokenPlaceholder(v))
-                            {
-                                var idType = ((string?)el.Attribute("journal-id-type") ?? "").ToLowerInvariant();
-                                // "publisher", "publisher-id", "doi", or unspecified — treat as JournalName short code
-                                if (string.IsNullOrEmpty(dto.JournalName))
-                                {
-                                    dto.JournalName = v; any = true; partMatches++; matchedFields++;
-                                    Console.WriteLine($"[ExtractIPubMeta]    [MATCH]          <journal-id journal-id-type='{idType}'> = '{v}' -> JournalName");
-                                }
-                            }
-                            continue;
-                        }
-
-                        // Special-case <pub-id pub-id-type="doi|publisher-id|art-access-id|manuscript|...">
-                        if (localName.Equals("pub-id", StringComparison.OrdinalIgnoreCase) && !el.HasElements)
-                        {
-                            var v = (el.Value ?? string.Empty).Trim();
-                            if (v.Length == 0 || IsTokenPlaceholder(v))
-                            {
-                                Console.WriteLine($"[ExtractIPubMeta]    [skip placeholder/empty] <pub-id> = '{v}'");
-                                continue;
-                            }
-                            var idType = ((string?)el.Attribute("pub-id-type") ?? "").ToLowerInvariant();
-                            if (idType == "doi")
-                            {
-                                if (string.IsNullOrEmpty(dto.Doi)) { dto.Doi = v; any = true; partMatches++; matchedFields++; }
-                                Console.WriteLine($"[ExtractIPubMeta]    [MATCH]          <pub-id pub-id-type='doi'> = '{v}' -> Doi");
-                            }
-                            else if (idType == "publisher-id" || idType == "art-access-id" || idType == "manuscript" || idType == "pii" || idType == "other")
-                            {
-                                if (string.IsNullOrEmpty(dto.ArticleId)) { dto.ArticleId = v; any = true; partMatches++; matchedFields++; }
-                                Console.WriteLine($"[ExtractIPubMeta]    [MATCH]          <pub-id pub-id-type='{idType}'> = '{v}' -> ArticleId");
-                            }
-                            else
-                            {
-                                Console.WriteLine($"[ExtractIPubMeta]    [no map]         <pub-id pub-id-type='{idType}'> = '{v}'");
-                            }
-                            continue;
-                        }
-
-                        // Special-case <issn pub-type="ppub|epub">
-                        if (localName.Equals("issn", StringComparison.OrdinalIgnoreCase) && !el.HasElements)
-                        {
-                            var v = (el.Value ?? string.Empty).Trim();
-                            if (v.Length == 0 || IsTokenPlaceholder(v))
-                            {
-                                Console.WriteLine($"[ExtractIPubMeta]    [skip placeholder/empty] <issn> = '{v}'");
-                                continue;
-                            }
-                            var pubType = (string?)el.Attribute("pub-type") ?? string.Empty;
-                            if (pubType.Equals("epub", StringComparison.OrdinalIgnoreCase))
-                            {
-                                if (string.IsNullOrEmpty(dto.EIssn)) { dto.EIssn = v; any = true; partMatches++; matchedFields++; }
-                                Console.WriteLine($"[ExtractIPubMeta]    [MATCH]          <issn pub-type=epub> = '{v}' -> EIssn");
-                            }
-                            else // ppub or unspecified
-                            {
-                                if (string.IsNullOrEmpty(dto.PIssn)) { dto.PIssn = v; any = true; partMatches++; matchedFields++; }
-                                Console.WriteLine($"[ExtractIPubMeta]    [MATCH]          <issn pub-type={pubType}> = '{v}' -> PIssn");
-                            }
-                            continue;
-                        }
-
-                        if (IPubFieldMap.TryGetValue(localName, out var setter))
-                        {
-                            if (el.HasElements)
-                            {
-                                Console.WriteLine($"[ExtractIPubMeta]    [skip container] <{localName}> has child elements");
-                                continue;
-                            }
-                            var value = (el.Value ?? string.Empty).Trim();
-                            if (value.Length == 0)
-                            {
-                                Console.WriteLine($"[ExtractIPubMeta]    [skip empty]     <{localName}>");
-                                continue;
-                            }
-                            if (IsTokenPlaceholder(value))
-                            {
-                                Console.WriteLine($"[ExtractIPubMeta]    [skip placeholder] <{localName}> = '{value}'");
-                                continue;
-                            }
-                            if (_dropdownLikeKeys.Contains(localName) && IsDropdownNoise(value))
-                            {
-                                Console.WriteLine($"[ExtractIPubMeta]    [skip dropdown-noise] <{localName}> = '{value}'");
-                                continue;
-                            }
-                            setter(dto, value);
-                            any = true;
-                            partMatches++;
-                            matchedFields++;
-                            Console.WriteLine($"[ExtractIPubMeta]    [MATCH]          <{localName}> = '{value}'");
-                        }
-                        else
-                        {
-                            Console.WriteLine($"[ExtractIPubMeta]    [no map]         <{localName}>");
-                        }
-                    }
                     Console.WriteLine($"[ExtractIPubMeta]    part summary: descendants={descendantCount}, matched={partMatches}");
                 }
 
@@ -390,6 +272,289 @@ namespace Deditor.Core.Services
                 Console.WriteLine("[ExtractIPubMeta] ===== END (exception) =====");
                 return null;
             }
+        }
+
+        // ── Strategy dispatch ─────────────────────────────────────────────────
+        private enum SchemaVariant { Unknown, Jats, ICoreJournal, ICoreBook }
+
+        private static SchemaVariant DetectSchemaVariant(XDocument xdoc)
+        {
+            var root = xdoc.Root;
+            if (root == null) return SchemaVariant.Unknown;
+            var rootName = root.Name.LocalName;
+
+            // JATS: root is <article> with hyphenated attrs.
+            if (rootName.Equals("article", StringComparison.OrdinalIgnoreCase))
+            {
+                if (root.Attribute("article-type") != null
+                    || root.Attribute("dtd-version") != null
+                    || root.Attribute(XNamespace.Xml + "lang") != null)
+                {
+                    return SchemaVariant.Jats;
+                }
+            }
+
+            // iCore: root is <icore>; check inner <article> attribute style.
+            if (rootName.Equals("icore", StringComparison.OrdinalIgnoreCase))
+            {
+                var article = root.Descendants().FirstOrDefault(e =>
+                    e.Name.LocalName.Equals("article", StringComparison.OrdinalIgnoreCase));
+                if (article != null)
+                {
+                    // iCore-IOPP Journal uses non-hyphenated attrs.
+                    bool nonHyphen =
+                        article.Attribute("articletype") != null ||
+                        article.Attribute("documenttype") != null ||
+                        article.Attribute("articleid") != null ||
+                        article.Attribute("doi") != null ||
+                        article.Attribute("publisherimprint") != null ||
+                        article.Attribute("yearofpub") != null ||
+                        article.Attribute("monthofpub") != null ||
+                        article.Attribute("copyrightowner") != null;
+                    if (nonHyphen) return SchemaVariant.ICoreJournal;
+                    // Also treat as Journal even when only generic attrs present
+                    if (article.HasAttributes) return SchemaVariant.ICoreJournal;
+                }
+                if (root.Descendants().Any(e =>
+                    e.Name.LocalName.Equals("book", StringComparison.OrdinalIgnoreCase)))
+                {
+                    return SchemaVariant.ICoreBook;
+                }
+            }
+
+            return SchemaVariant.Unknown;
+        }
+
+        // Placeholder-aware attribute reader. Returns trimmed value if present
+        // and not a ;token; placeholder; otherwise returns false.
+        private static bool TryGetAttr(XElement el, string name, out string v)
+        {
+            v = ((string?)el.Attribute(name) ?? string.Empty).Trim();
+            return v.Length > 0 && !IsTokenPlaceholder(v);
+        }
+
+        // ── Strategy: JATS ────────────────────────────────────────────────────
+        // Reads JATS-style <article> attributes: article-type, dtd-version,
+        // xml:lang. Mirrors the legacy inline handler's behaviour exactly.
+        private static int RunJatsStrategy(XDocument xdoc, IPubMetaDto dto)
+        {
+            int matches = 0;
+            foreach (var article in xdoc.Descendants().Where(e =>
+                e.Name.LocalName.Equals("article", StringComparison.OrdinalIgnoreCase)))
+            {
+                if (TryGetAttr(article, "article-type", out var at)
+                    && string.IsNullOrEmpty(dto.ArticleType))
+                {
+                    dto.ArticleType = at; matches++;
+                    Console.WriteLine($"[ExtractIPubMeta]    [MATCH attr]     <article article-type='{at}'> -> ArticleType");
+                }
+                if (TryGetAttr(article, "dtd-version", out var dv)
+                    && string.IsNullOrEmpty(dto.Dtd))
+                {
+                    dto.Dtd = dv; matches++;
+                    Console.WriteLine($"[ExtractIPubMeta]    [MATCH attr]     <article dtd-version='{dv}'> -> Dtd");
+                }
+                var lang = ((string?)article.Attribute(XNamespace.Xml + "lang") ?? string.Empty).Trim();
+                if (lang.Length > 0 && !IsTokenPlaceholder(lang) && string.IsNullOrEmpty(dto.Language))
+                {
+                    dto.Language = lang; matches++;
+                    Console.WriteLine($"[ExtractIPubMeta]    [MATCH attr]     <article xml:lang='{lang}'> -> Language");
+                }
+            }
+            return matches;
+        }
+
+        // ── Strategy: iCore Journal (IOPP/ECSA/etc.) ─────────────────────────
+        // Reads non-hyphenated attributes on <article>. First-non-empty wins,
+        // so a value already populated by an earlier strategy or part is kept.
+        private static int RunICoreJournalStrategy(XDocument xdoc, IPubMetaDto dto)
+        {
+            int matches = 0;
+            foreach (var article in xdoc.Descendants().Where(e =>
+                e.Name.LocalName.Equals("article", StringComparison.OrdinalIgnoreCase)))
+            {
+                if (TryGetAttr(article, "articletype", out var at)
+                    && string.IsNullOrEmpty(dto.ArticleType))
+                {
+                    dto.ArticleType = at; matches++;
+                    Console.WriteLine($"[ExtractIPubMeta]    [MATCH attr]     <article articletype='{at}'> -> ArticleType");
+                }
+                if (TryGetAttr(article, "documenttype", out var dt)
+                    && string.IsNullOrEmpty(dto.DocumentType))
+                {
+                    dto.DocumentType = dt; matches++;
+                    Console.WriteLine($"[ExtractIPubMeta]    [MATCH attr]     <article documenttype='{dt}'> -> DocumentType");
+                }
+                if (TryGetAttr(article, "articleid", out var aid)
+                    && string.IsNullOrEmpty(dto.ArticleId))
+                {
+                    dto.ArticleId = aid; matches++;
+                    Console.WriteLine($"[ExtractIPubMeta]    [MATCH attr]     <article articleid='{aid}'> -> ArticleId");
+                }
+                if (TryGetAttr(article, "doi", out var doi)
+                    && string.IsNullOrEmpty(dto.Doi))
+                {
+                    dto.Doi = doi; matches++;
+                    Console.WriteLine($"[ExtractIPubMeta]    [MATCH attr]     <article doi='{doi}'> -> Doi");
+                }
+                if (TryGetAttr(article, "publisherimprint", out var pi)
+                    && string.IsNullOrEmpty(dto.PublisherImprint))
+                {
+                    dto.PublisherImprint = pi; matches++;
+                    Console.WriteLine($"[ExtractIPubMeta]    [MATCH attr]     <article publisherimprint='{pi}'> -> PublisherImprint");
+                }
+                if (TryGetAttr(article, "copyrightowner", out var co)
+                    && string.IsNullOrEmpty(dto.Copyrights))
+                {
+                    dto.Copyrights = co; matches++;
+                    Console.WriteLine($"[ExtractIPubMeta]    [MATCH attr]     <article copyrightowner='{co}'> -> Copyrights");
+                }
+                if (TryGetAttr(article, "yearofpub", out var yp)
+                    && string.IsNullOrEmpty(dto.Year))
+                {
+                    dto.Year = yp; matches++;
+                    Console.WriteLine($"[ExtractIPubMeta]    [MATCH attr]     <article yearofpub='{yp}'> -> Year");
+                }
+                if (TryGetAttr(article, "monthofpub", out var mp)
+                    && string.IsNullOrEmpty(dto.Month))
+                {
+                    dto.Month = mp; matches++;
+                    Console.WriteLine($"[ExtractIPubMeta]    [MATCH attr]     <article monthofpub='{mp}'> -> Month");
+                }
+                // article-type alias seen in some iCore variants
+                if (TryGetAttr(article, "article-type", out var at2)
+                    && string.IsNullOrEmpty(dto.ArticleType))
+                {
+                    dto.ArticleType = at2; matches++;
+                    Console.WriteLine($"[ExtractIPubMeta]    [MATCH attr]     <article article-type='{at2}'> -> ArticleType");
+                }
+            }
+            return matches;
+        }
+
+        // ── Generic fallback walker ──────────────────────────────────────────
+        // Walks every descendant element and applies the IPubFieldMap plus the
+        // <journal-id>/<pub-id>/<issn> special cases. Strategies have already
+        // populated their fields; first-non-empty-wins setters mean this only
+        // fills gaps. Identical behaviour to the pre-refactor walker.
+        private static int RunGenericFallback(XDocument xdoc, IPubMetaDto dto, out int descendantCount)
+        {
+            int matches = 0;
+            descendantCount = 0;
+            foreach (var el in xdoc.Descendants())
+            {
+                descendantCount++;
+                var localName = el.Name.LocalName;
+                if (string.IsNullOrEmpty(localName)) continue;
+
+                // <journal-id ... /> — short-code → JournalName
+                if (localName.Equals("journal-id", StringComparison.OrdinalIgnoreCase) && !el.HasElements)
+                {
+                    var v = (el.Value ?? string.Empty).Trim();
+                    if (v.Length > 0 && !IsTokenPlaceholder(v))
+                    {
+                        var idType = ((string?)el.Attribute("journal-id-type") ?? "").ToLowerInvariant();
+                        if (string.IsNullOrEmpty(dto.JournalName))
+                        {
+                            dto.JournalName = v; matches++;
+                            Console.WriteLine($"[ExtractIPubMeta]    [MATCH]          <journal-id journal-id-type='{idType}'> = '{v}' -> JournalName");
+                        }
+                    }
+                    continue;
+                }
+
+                // <pub-id pub-id-type="doi|publisher-id|...">
+                if (localName.Equals("pub-id", StringComparison.OrdinalIgnoreCase) && !el.HasElements)
+                {
+                    var v = (el.Value ?? string.Empty).Trim();
+                    if (v.Length == 0 || IsTokenPlaceholder(v))
+                    {
+                        Console.WriteLine($"[ExtractIPubMeta]    [skip placeholder/empty] <pub-id> = '{v}'");
+                        continue;
+                    }
+                    var idType = ((string?)el.Attribute("pub-id-type") ?? "").ToLowerInvariant();
+                    if (idType == "doi")
+                    {
+                        if (string.IsNullOrEmpty(dto.Doi)) { dto.Doi = v; matches++; }
+                        Console.WriteLine($"[ExtractIPubMeta]    [MATCH]          <pub-id pub-id-type='doi'> = '{v}' -> Doi");
+                    }
+                    else if (idType == "publisher-id" || idType == "art-access-id" || idType == "manuscript" || idType == "pii" || idType == "other")
+                    {
+                        if (string.IsNullOrEmpty(dto.ArticleId)) { dto.ArticleId = v; matches++; }
+                        Console.WriteLine($"[ExtractIPubMeta]    [MATCH]          <pub-id pub-id-type='{idType}'> = '{v}' -> ArticleId");
+                    }
+                    else
+                    {
+                        Console.WriteLine($"[ExtractIPubMeta]    [no map]         <pub-id pub-id-type='{idType}'> = '{v}'");
+                    }
+                    continue;
+                }
+
+                // <issn pub-type|type="epub|electronic|ppub|print">
+                if (localName.Equals("issn", StringComparison.OrdinalIgnoreCase) && !el.HasElements)
+                {
+                    var v = (el.Value ?? string.Empty).Trim();
+                    if (v.Length == 0 || IsTokenPlaceholder(v))
+                    {
+                        Console.WriteLine($"[ExtractIPubMeta]    [skip placeholder/empty] <issn> = '{v}'");
+                        continue;
+                    }
+                    // Accept both pub-type (JATS) and type (iCore) attribute names.
+                    var kind = ((string?)el.Attribute("pub-type")
+                                ?? (string?)el.Attribute("type")
+                                ?? string.Empty).ToLowerInvariant();
+                    bool isElectronic = kind == "epub" || kind == "electronic";
+                    bool isPrint      = kind == "ppub" || kind == "print";
+                    if (isElectronic)
+                    {
+                        if (string.IsNullOrEmpty(dto.EIssn)) { dto.EIssn = v; matches++; }
+                        Console.WriteLine($"[ExtractIPubMeta]    [MATCH]          <issn {(el.Attribute("pub-type") != null ? "pub-type" : "type")}={kind}> = '{v}' -> EIssn");
+                    }
+                    else if (isPrint || string.IsNullOrEmpty(kind))
+                    {
+                        if (string.IsNullOrEmpty(dto.PIssn)) { dto.PIssn = v; matches++; }
+                        Console.WriteLine($"[ExtractIPubMeta]    [MATCH]          <issn {(el.Attribute("pub-type") != null ? "pub-type" : "type")}={kind}> = '{v}' -> PIssn");
+                    }
+                    else
+                    {
+                        Console.WriteLine($"[ExtractIPubMeta]    [no map]         <issn type/pub-type={kind}> = '{v}'");
+                    }
+                    continue;
+                }
+
+                if (IPubFieldMap.TryGetValue(localName, out var setter))
+                {
+                    if (el.HasElements)
+                    {
+                        Console.WriteLine($"[ExtractIPubMeta]    [skip container] <{localName}> has child elements");
+                        continue;
+                    }
+                    var value = (el.Value ?? string.Empty).Trim();
+                    if (value.Length == 0)
+                    {
+                        Console.WriteLine($"[ExtractIPubMeta]    [skip empty]     <{localName}>");
+                        continue;
+                    }
+                    if (IsTokenPlaceholder(value))
+                    {
+                        Console.WriteLine($"[ExtractIPubMeta]    [skip placeholder] <{localName}> = '{value}'");
+                        continue;
+                    }
+                    if (_dropdownLikeKeys.Contains(localName) && IsDropdownNoise(value))
+                    {
+                        Console.WriteLine($"[ExtractIPubMeta]    [skip dropdown-noise] <{localName}> = '{value}'");
+                        continue;
+                    }
+                    setter(dto, value);
+                    matches++;
+                    Console.WriteLine($"[ExtractIPubMeta]    [MATCH]          <{localName}> = '{value}'");
+                }
+                else
+                {
+                    Console.WriteLine($"[ExtractIPubMeta]    [no map]         <{localName}>");
+                }
+            }
+            return matches;
         }
 
         // Helper: return true if value is empty or a semicolon-wrapped template
@@ -655,9 +820,33 @@ namespace Deditor.Core.Services
                     int updated = 0;
                     int created = 0;
 
-                    // Iterate the write-map and apply each non-null DTO field.
+                    // Detect schema variant — picks the right write strategy so we
+                    // (a) update <article> attributes for iCore-Journal/JATS instead
+                    // of inventing root-level duplicate elements, and
+                    // (b) skip book-only fields (book-id, year, month, etc.) on
+                    // journals where they are unrelated placeholders.
+                    var variant = DetectSchemaVariant(icoreDoc);
+                    Console.WriteLine($"[UpdateMeta] [strategy={variant}]");
+
+                    // Strategy-specific writes BEFORE the generic loop so the strategy
+                    // populates the canonical location and the loop can skip duplicates.
+                    if (variant == SchemaVariant.ICoreJournal)
+                        WriteICoreJournalAttrs(root, dto, ref updated, ref created);
+                    else if (variant == SchemaVariant.Jats)
+                        WriteJatsAttrs(root, dto, ref updated, ref created);
+
+                    // Generic element-map pass.
                     foreach (var (localName, getter) in _icoreWriteMap)
                     {
+                        // Skip keys that the iCore-Journal strategy already wrote as
+                        // <article> attributes, or that target the unrelated <book>
+                        // sub-tree on a journal file.
+                        if (variant == SchemaVariant.ICoreJournal && _journalSkipKeys.Contains(localName))
+                        {
+                            Console.WriteLine($"[UpdateMeta] [skip-journal] <{localName}>");
+                            continue;
+                        }
+
                         var value = getter(dto);
                         if (value == null) continue;
 
@@ -687,6 +876,13 @@ namespace Deditor.Core.Services
                                 Console.WriteLine($"[UpdateMeta] Skip create empty <{localName}>");
                                 continue;
                             }
+                            // Skip creating root-level duplicate elements for fields the
+                            // strategy already wrote as attributes/dedicated locations.
+                            if (variant == SchemaVariant.ICoreJournal && _journalSkipCreateKeys.Contains(localName))
+                            {
+                                Console.WriteLine($"[UpdateMeta] [skip-create-journal] <{localName}>");
+                                continue;
+                            }
                             // Create as child of root, preserving any default namespace.
                             var newEl = ns == XNamespace.None
                                 ? new XElement(localName, value)
@@ -697,9 +893,18 @@ namespace Deditor.Core.Services
                         }
                     }
 
-                    // Special-case ISSN: <issn pub-type="ppub"|"epub"> — update by attribute.
-                    UpdateOrCreateIssn(root, ns, "ppub", dto.PIssn, ref updated, ref created);
-                    UpdateOrCreateIssn(root, ns, "epub", dto.EIssn, ref updated, ref created);
+                    // ISSN — variant-aware: iCore-Journal uses <issn type="print|electronic">,
+                    // JATS / iCore-Book use <issn pub-type="ppub|epub">.
+                    if (variant == SchemaVariant.ICoreJournal)
+                    {
+                        UpdateOrCreateIssnByTypeAttr(root, ns, "print",      dto.PIssn, ref updated, ref created);
+                        UpdateOrCreateIssnByTypeAttr(root, ns, "electronic", dto.EIssn, ref updated, ref created);
+                    }
+                    else
+                    {
+                        UpdateOrCreateIssn(root, ns, "ppub", dto.PIssn, ref updated, ref created);
+                        UpdateOrCreateIssn(root, ns, "epub", dto.EIssn, ref updated, ref created);
+                    }
 
                     Console.WriteLine($"[UpdateMeta] Summary: updated={updated}, created={created}");
 
@@ -764,6 +969,152 @@ namespace Deditor.Core.Services
                                     new XElement("month")),
                                 new XElement("language"))))));
         }
+
+        // ── iCore-Journal write strategy ──────────────────────────────────────
+        // Persists user-edited values onto the canonical <article ...> attributes
+        // used by IOPP / ECSA-style customXml. Empty string clears.
+        private static void WriteICoreJournalAttrs(XElement root, IPubMetaDto dto,
+                                                   ref int updated, ref int created)
+        {
+            var article = root.Descendants().FirstOrDefault(e =>
+                e.Name.LocalName.Equals("article", StringComparison.OrdinalIgnoreCase));
+            if (article == null)
+            {
+                Console.WriteLine("[UpdateMeta] [ICoreJournal] no <article> element — skipping attribute writes");
+                return;
+            }
+
+            SetArticleAttr(article, "articletype",      dto.ArticleType,      ref updated, ref created);
+            SetArticleAttr(article, "documenttype",     dto.DocumentType,     ref updated, ref created);
+            SetArticleAttr(article, "articleid",        dto.ArticleId,        ref updated, ref created);
+            SetArticleAttr(article, "doi",              dto.Doi,              ref updated, ref created);
+            SetArticleAttr(article, "publisherimprint", dto.PublisherImprint, ref updated, ref created);
+            SetArticleAttr(article, "copyrightowner",   dto.Copyrights,       ref updated, ref created);
+            SetArticleAttr(article, "yearofpub",        dto.Year,             ref updated, ref created);
+            SetArticleAttr(article, "monthofpub",       dto.Month,            ref updated, ref created);
+            SetArticleAttr(article, "language",         dto.Language,         ref updated, ref created);
+        }
+
+        // ── JATS write strategy ───────────────────────────────────────────────
+        // Mirrors the JatsStrategy reader — writes article-type, dtd-version,
+        // and xml:lang back to the root <article>. Other JATS fields fall through
+        // to the existing element-map / pub-id / issn handling.
+        private static void WriteJatsAttrs(XElement root, IPubMetaDto dto,
+                                           ref int updated, ref int created)
+        {
+            var article = root.DescendantsAndSelf().FirstOrDefault(e =>
+                e.Name.LocalName.Equals("article", StringComparison.OrdinalIgnoreCase));
+            if (article == null) return;
+
+            SetArticleAttr(article, "article-type", dto.ArticleType, ref updated, ref created);
+            SetArticleAttr(article, "dtd-version",  dto.Dtd,         ref updated, ref created);
+
+            if (dto.Language != null)
+            {
+                var langName = XNamespace.Xml + "lang";
+                var cur = (string?)article.Attribute(langName);
+                if (cur != dto.Language)
+                {
+                    if (cur == null)
+                    {
+                        article.SetAttributeValue(langName, dto.Language);
+                        Console.WriteLine($"[UpdateMeta] [Jats] Created <article xml:lang='{dto.Language}'>");
+                        created++;
+                    }
+                    else
+                    {
+                        Console.WriteLine($"[UpdateMeta] [Jats] Updating <article xml:lang> '{cur}' → '{dto.Language}'");
+                        article.SetAttributeValue(langName, dto.Language);
+                        updated++;
+                    }
+                }
+            }
+        }
+
+        // Idempotent attribute writer: null skips, equal skips, else create or update.
+        private static void SetArticleAttr(XElement article, string name, string? value,
+                                           ref int updated, ref int created)
+        {
+            if (value == null) return;
+            var cur = (string?)article.Attribute(name);
+            if (cur == value)
+            {
+                Console.WriteLine($"[UpdateMeta] [attr] Unchanged <article {name}='{value}'> (skip)");
+                return;
+            }
+            article.SetAttributeValue(name, value);
+            if (cur == null)
+            {
+                Console.WriteLine($"[UpdateMeta] [attr] Created <article {name}='{value}'>");
+                created++;
+            }
+            else
+            {
+                Console.WriteLine($"[UpdateMeta] [attr] Updating <article {name}> '{cur}' → '{value}'");
+                updated++;
+            }
+        }
+
+        // Update an existing <issn type="print"|"electronic"> element (iCore-Journal
+        // shape) instead of creating a `pub-type` sibling. Falls back to creating
+        // inside <article-meta> if the element is missing.
+        private static void UpdateOrCreateIssnByTypeAttr(XElement root, XNamespace ns, string typeAttr,
+                                                        string? value, ref int updated, ref int created)
+        {
+            if (value == null) return;
+            // Match either the iCore `type=` or the legacy `pub-type=` synonym so we
+            // never duplicate.
+            string altPubType = typeAttr.Equals("print", StringComparison.OrdinalIgnoreCase) ? "ppub" : "epub";
+            var existing = root.Descendants()
+                .Where(e => e.Name.LocalName.Equals("issn", StringComparison.OrdinalIgnoreCase))
+                .FirstOrDefault(e =>
+                    string.Equals((string?)e.Attribute("type"),     typeAttr,    StringComparison.OrdinalIgnoreCase) ||
+                    string.Equals((string?)e.Attribute("pub-type"), altPubType,  StringComparison.OrdinalIgnoreCase));
+
+            if (existing != null)
+            {
+                if (existing.Value != value)
+                {
+                    Console.WriteLine($"[UpdateMeta] Updating <issn type='{typeAttr}'> '{existing.Value}' → '{value}'");
+                    existing.Value = value;
+                    updated++;
+                }
+                else
+                {
+                    Console.WriteLine($"[UpdateMeta] Unchanged <issn type='{typeAttr}'> = '{value}' (skip)");
+                }
+                return;
+            }
+            if (string.IsNullOrEmpty(value)) return;
+
+            var articleMeta = root.Descendants().FirstOrDefault(e =>
+                e.Name.LocalName.Equals("article-meta", StringComparison.OrdinalIgnoreCase));
+            var parent = articleMeta ?? root;
+            var el = ns == XNamespace.None ? new XElement("issn", value) : new XElement(ns + "issn", value);
+            el.SetAttributeValue("type", typeAttr);
+            parent.Add(el);
+            Console.WriteLine($"[UpdateMeta] Created <issn type='{typeAttr}'> = '{value}' (under <{parent.Name.LocalName}>)");
+            created++;
+        }
+
+        // Element keys to fully skip (no read, no create) when the file is iCore-Journal.
+        // These are either book-section placeholders unrelated to journals, or values
+        // already written as <article> attributes by WriteICoreJournalAttrs.
+        private static readonly HashSet<string> _journalSkipKeys =
+            new(StringComparer.OrdinalIgnoreCase)
+            {
+                "book-id", "book-title", "isbn", "year", "month",
+                "ProcessType", "ChapterType",
+            };
+
+        // Element keys we still allow to read existing values for (logging / unchanged
+        // detection), but should not CREATE as new root-level duplicates on journals.
+        // The journal strategy already records these as <article> attributes.
+        private static readonly HashSet<string> _journalSkipCreateKeys =
+            new(StringComparer.OrdinalIgnoreCase)
+            {
+                "ArticleType", "article-id", "icore-publisher-imprint",
+            };
 
         private static void UpdateOrCreateIssn(XElement root, XNamespace ns, string pubType, string? value,
                                                ref int updated, ref int created)

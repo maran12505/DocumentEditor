@@ -132,7 +132,15 @@
       "PowerShell($env:DOTNET_ENVIRONMENT='Development'; Set-Location \"D:/profile backup/Documents/Deditor/DeditorUpdated/Deditor.Server\"; dotnet run --no-build 2>&1 | Tee-Object \"$env:TEMP\\\\deditor-server.log\")",
       "PowerShell($env:DOTNET_ENVIRONMENT='Development'; Set-Location \"D:/profile backup/Documents/Deditor/DeditorUpdated/Deditor.Web\"; dotnet run --no-build)",
       "mcp__Claude_in_Chrome__browser_batch",
-      "PowerShell($f = \"D:\\\\Manuscripts\\\\ACS_Journals\\\\cn5c00533_20251113_114141_REQ5087533\\\\cn5c00533\\\\cn5c00533 - Copy.docx\"; Write-Output \\(\"Exists: \" + \\(Test-Path $f\\)\\); if \\(Test-Path $f\\) { \\(Get-Item $f\\).Length })"
+      "PowerShell($f = \"D:\\\\Manuscripts\\\\ACS_Journals\\\\cn5c00533_20251113_114141_REQ5087533\\\\cn5c00533\\\\cn5c00533 - Copy.docx\"; Write-Output \\(\"Exists: \" + \\(Test-Path $f\\)\\); if \\(Test-Path $f\\) { \\(Get-Item $f\\).Length })",
+      "Bash(tasklist /FI \"PID eq 7848\")",
+      "PowerShell(Get-Process -Id 7848 -ErrorAction SilentlyContinue)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://127.0.0.1:5278/)",
+      "PowerShell($excel = New-Object -ComObject Excel.Application; $excel.Visible = $false; $wb = $excel.Workbooks.Open\\('D:\\\\profile backup\\\\Documents\\\\List_Elements_DB.xlsx', 0, $true\\); foreach \\($ws in $wb.Worksheets\\) { Write-Output \"=== Sheet: $\\($ws.Name\\) | UsedRange rows=$\\($ws.UsedRange.Rows.Count\\) cols=$\\($ws.UsedRange.Columns.Count\\) ===\"; $headers = @\\(\\); for \\($c=1; $c -le $ws.UsedRange.Columns.Count; $c++\\) { $headers += \"[$c]=$\\($ws.Cells.Item\\(1,$c\\).Value2\\)\" }; Write-Output \\($headers -join ' | '\\); Write-Output \"Rows 2-6:\"; for \\($r=2; $r -le 6; $r++\\) { $row = @\\(\\); for \\($c=1; $c -le $ws.UsedRange.Columns.Count; $c++\\) { $v = $ws.Cells.Item\\($r,$c\\).Value2; $row += \"$v\" }; Write-Output \\($row -join ' | '\\) } }; $wb.Close\\($false\\); $excel.Quit\\(\\); [System.Runtime.Interopservices.Marshal]::ReleaseComObject\\($excel\\) | Out-Null)",
+      "Bash(curl -s -o /dev/null -w \"elements-book.json: %{http_code} \\(%{size_download} bytes\\)\\\\n\" \"http://localhost:5278/_content/Deditor.Shared.UI/data/elements-book.json\")",
+      "Bash(curl -s -o /dev/null -w \"elements-journal.json: %{http_code} \\(%{size_download} bytes\\)\\\\n\" \"http://localhost:5278/_content/Deditor.Shared.UI/data/elements-journal.json\")",
+      "Bash(curl -s -o /dev/null -w \"PropertiesPanel.css: %{http_code} \\(%{size_download} bytes\\)\\\\n\" \"http://localhost:5278/_content/Deditor.Shared.UI/css/PropertiesPanel.css\")",
+      "Bash(curl -s -o /dev/null -w \"properties-panel.js: %{http_code} \\(%{size_download} bytes\\)\\\\n\" \"http://localhost:5278/_content/Deditor.Shared.UI/js/properties-panel.js\")"
     ]
   }
 }

@@ -376,7 +376,7 @@
     .ipub-label {
         font-size: .66rem; font-weight: 600;
         text-transform: uppercase; letter-spacing: .04em;
-        color: #2c2b27;
+        
         white-space: normal; flex-shrink: 0; margin: 0;
         line-height: 1.2;
     }
@@ -573,6 +573,8 @@
             @onclick="ToggleLeftPane" title="Toggle Panel"></button>
     <button id="nBtnMeta" class="n-btn n-btn-ghost n-btn-icon"
             @onclick="OpenMetaDialog" title="iPubEdit Meta Information"></button>
+    <button id="nBtnProperties" class="n-btn n-btn-ghost n-btn-icon" hidden
+            @onclick="TogglePropertiesPanel" title="iPubEdit Properties (Ctrl+Alt+M)"></button>
     <button id="nBtnSearch" class="n-btn n-btn-ghost n-btn-icon @(_navPaneOpen ? "active" : "")"
             @onclick="ToggleNavigationPane" title="Find &amp; Replace (Ctrl+F)"></button>
     <button id="nBtnFocusMode" class="n-btn n-btn-ghost n-btn-icon"
@@ -1026,6 +1028,64 @@
             </div>
         </aside>
     }
+
+    <!-- ══ iPubEdit Properties — right-side docked panel (in-flex) ════════ -->
+    <aside class="ipub-properties-panel @(_showPropertiesPanel ? "open" : "")" id="ipubPropertiesPanel" hidden="@(!_showPropertiesPanel)">
+        <header class="ipp-header">
+            <span>iPubEdit Properties</span>
+            <button class="ipp-close" @onclick="() => _showPropertiesPanel = false" title="Close">×</button>
+        </header>
+
+        <section class="ipp-tag">
+            <div class="ipp-tag-label" id="ippTagLabel">— no tag —</div>
+            <div class="ipp-tag-row">
+                <input id="ippTagInput" class="ipp-input" placeholder="tag name" />
+                <button class="ipp-icon-btn" id="ippSearchBtn" title="Find this tag in tree">🔍</button>
+            </div>
+            <div class="ipp-actions">
+                <button id="ippReload" type="button">Reload</button>
+                <button id="ippActivate" type="button">Activate</button>
+                <button id="ippRemove" type="button">Remove</button>
+            </div>
+            <div class="ipp-options">
+                <select id="ippDefault"><option>Default</option></select>
+                <label><input type="checkbox" id="ippConfirm" checked /> Confirmation</label>
+            </div>
+        </section>
+
+        <section class="ipp-tree">
+            <h4>Element Name</h4>
+            <div id="ippTreeRoot" class="ipp-tree-root"></div>
+        </section>
+
+        <section class="ipp-attrs">
+            <div class="ipp-attrs-header">
+                <span>Attributes :</span>
+                <span id="ippAttrTag">—</span>
+                <button id="ippAttrRemove" type="button">Remove</button>
+                <button id="ippAttrSave" type="button">Save</button>
+            </div>
+            <div class="ipp-attr-scroll">
+                <table id="ippAttrTable" class="ipp-attr-grid"></table>
+            </div>
+        </section>
+
+        <nav class="ipp-tabs">
+            <button class="active" type="button">Element</button>
+            <button class="ipp-tab-disabled" type="button" title="Coming soon">References</button>
+            <button class="ipp-tab-disabled" type="button" title="Coming soon">Find &amp; Replace</button>
+            <button class="ipp-tab-disabled" type="button" title="Coming soon">FootNote / EndNote</button>
+            <button class="ipp-tab-disabled" type="button" title="Coming soon">Style</button>
+            <button class="ipp-tab-disabled" type="button" title="Coming soon">Stage-2 Process</button>
+            <button class="ipp-tab-disabled" type="button" title="Coming soon">Quotes Process</button>
+            <button class="ipp-tab-disabled" type="button" title="Coming soon">Number to MathType</button>
+            <button class="ipp-tab-disabled" type="button" title="Coming soon">Editing Features</button>
+            <button class="ipp-tab-disabled" type="button" title="Coming soon">Footnote References</button>
+            <button class="ipp-tab-disabled" type="button" title="Coming soon">Link</button>
+            <button class="ipp-tab-disabled" type="button" title="Coming soon">LaTeX Entity</button>
+            <button class="ipp-tab-disabled" type="button" title="Coming soon">Clean Up</button>
+        </nav>
+    </aside>
 
 </div>
 
@@ -1493,6 +1553,9 @@
     private double _slashPickerY       = 0;
     private int    _slashActiveIdx     = 0;
 
+    // ── iPubEdit Properties (right-side panel) state ────────────────────────
+    private bool _showPropertiesPanel = false;
+
     // ── iPubEdit Meta Information dialog state ──────────────────────────────
     private bool _showMetaDialog = false;
     private IPubEditMeta _meta = new();
@@ -1802,6 +1865,15 @@
         await LoadMetadataForActiveTabAsync();
         _showMetaDialog = true;
         StateHasChanged();
+    }
+
+    // ── iPubEdit Properties panel (toggle from ribbon button or Ctrl+Alt+M) ─
+    [JSInvokable]
+    public Task TogglePropertiesPanel()
+    {
+        _showPropertiesPanel = !_showPropertiesPanel;
+        StateHasChanged();
+        return Task.CompletedTask;
     }
 
     private void CloseMetaDialog()
@@ -2439,7 +2511,7 @@ if (!hasHandle)
             if (string.IsNullOrEmpty(sfdt)) { SetStatus("❌ Nothing to save.", true); return; }
             await JSRuntime.InvokeVoidAsync("storeSfdtToDb", ActiveTab.Id.ToString(), sfdt);
 
-            using var saveStream = DocumentService.Save(sfdt, ActiveTab.FileName);
+            using var saveStream = await DocumentService.SaveAsync(sfdt, ActiveTab.FileName);
             using var saveMs = new MemoryStream();
             saveStream.CopyTo(saveMs);
             var base64 = Convert.ToBase64String(saveMs.ToArray());
@@ -2543,7 +2615,7 @@ if (!hasHandle)
             var sfdt = await JSRuntime.InvokeAsync<string>("getDocumentContent");
             if (string.IsNullOrEmpty(sfdt)) { SetStatus("❌ Nothing to save.", true); return; }
             ActiveTab!.IsModified = false;
-            using var saveStream = DocumentService.Save(sfdt, ActiveTab.FileName);
+            using var saveStream = await DocumentService.SaveAsync(sfdt, ActiveTab.FileName);
             using var saveMs = new MemoryStream();
             saveStream.CopyTo(saveMs);
             var base64 = Convert.ToBase64String(saveMs.ToArray());

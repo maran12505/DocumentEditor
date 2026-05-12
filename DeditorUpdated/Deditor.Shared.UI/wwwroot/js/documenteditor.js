@@ -207,7 +207,7 @@ window.tabDbHas = async function (tabId) {
 // Save current active editor to IndexedDB (for auto-save/recovery only)
 window.saveCurrentEditorToDb = async function (tabId) {
     if (!container || !tabId) return false;
-    var sfdt = container.documentEditor.serialize();
+    var sfdt = _serializeForSave();
     if (!sfdt || sfdt.length < 10) return false;
     return await window.tabDbSave(tabId, sfdt);
 };
@@ -310,10 +310,30 @@ window.createEditorForTab = function (tabId) {
     inst.documentEditor.contentChange = function () {
         if (editorEntry._loadingDocument) return;
         editorEntry.editedSinceOpen = true;
+        // Toggle caches: any real edit invalidates them so the next toggle rebuilds
+        // fresh. Covers both edits-while-tags-visible AND edits-while-tags-hidden.
+        editorEntry.cleanSfdt = null;
+        editorEntry.markedSfdt = null;
         if (editorEntry.ccTagsVisible) {
             editorEntry._editedInTagView = true;
-            // Invalidate caches so HIDE will serialize fresh instead of restoring stale cleanSfdt
-            editorEntry.markedSfdt = null;
+        }
+    };
+
+    // ── iPubEdit Properties wiring ──
+    // 1) selection sync — populate panel when cursor moves
+    var _origSelChange = inst.documentEditor.selectionChange;
+    inst.documentEditor.selectionChange = function () {
+        try { if (typeof _origSelChange === 'function') _origSelChange.apply(this, arguments); } catch (e) {}
+        if (window.IPubProperties && typeof window.IPubProperties.onSelectionChanged === 'function') {
+            window.IPubProperties.onSelectionChanged();
+        }
+    };
+    // 2) document loaded — fire auto-open exactly once
+    var _origDocChange = inst.documentEditor.documentChange;
+    inst.documentEditor.documentChange = function () {
+        try { if (typeof _origDocChange === 'function') _origDocChange.apply(this, arguments); } catch (e) {}
+        if (window.IPubProperties && typeof window.IPubProperties.onDocumentLoaded === 'function') {
+            setTimeout(function () { window.IPubProperties.onDocumentLoaded(); }, 0);
         }
     };
 
@@ -327,7 +347,7 @@ window.createEditorForTab = function (tabId) {
     _attachSlashToEditor(divId);
 
     // Inject unified header ASAP via MutationObserver (no 500ms flash)
-    _watchForRibbon(divId);
+    _watchForRibbon(divId, inst);
 
     console.log('[MultiEditor] Editor created. Total instances: ' + Object.keys(_editors).length);
     return true;
@@ -764,7 +784,7 @@ window.saveAsComplete = async function (tabId, suggestedName, formatExt, serverS
         });
 
         var handle = await window.showSaveFilePicker({ suggestedName: suggestedName || 'Untitled.docx', types: types });
-        var sfdt = container ? container.documentEditor.serialize() : null;
+        var sfdt = _serializeForSave();
         if (!sfdt) return 'ERROR:No document content';
         var chosenName = handle.name || suggestedName;
 
@@ -1912,7 +1932,7 @@ window.stopAutoSave = function () {
 window.autoSaveNow = function (tabId, fileName) {
     if (!container || !tabId) return false;
     try {
-        var sfdt = container.documentEditor.serialize();
+        var sfdt = _serializeForSave();
         if (!sfdt || sfdt === _lastSavedSfdt) return false;
         if (sfdt.length > 4 * 1024 * 1024) return false;
         var entry = JSON.stringify({ sfdt: sfdt, fileName: fileName || 'Untitled.docx', savedAt: new Date().toISOString() });
@@ -2044,7 +2064,7 @@ function _doSaveAs() {
     window.showSaveFilePicker({
         suggestedName: fileName || 'Untitled.docx', types: types
     }).then(function (handle) {
-        var sfdt = container ? container.documentEditor.serialize() : null;
+        var sfdt = _serializeForSave();
         if (!sfdt) { _notifyBlazorSaveAs('ERROR:No document content'); return; }
         var chosenName = handle.name || fileName;
         return fetch(_apiUrl('/api/documenteditor/save'), {
@@ -2156,6 +2176,33 @@ function _invalidateTabCache(tabState) {
     tabState.markedSfdt = null;
 }
 
+// Returns SFDT suitable for persisting (Save / Save As / autosave).
+// Guarantees no tag-view markers are present even if tags are currently visible.
+//   - tags hidden          → de.serialize() directly (current state IS clean)
+//   - tags visible, no edit → return cached cleanSfdt (instant, no work)
+//   - tags visible, edited → serialize current, strip markers, return stripped
+// Without this, saving while tags are visible persists the markers as real text.
+function _serializeForSave() {
+    if (!container || !container.documentEditor) return null;
+    var de = container.documentEditor;
+    var s = _getTabState();
+    if (!s || !s.ccTagsVisible) {
+        return de.serialize();
+    }
+    if (s.cleanSfdt && !s._editedInTagView) {
+        return s.cleanSfdt;
+    }
+    try {
+        var live = de.serialize();
+        var parsed = JSON.parse(live);
+        _stripTagMarkers(parsed);
+        return JSON.stringify(parsed);
+    } catch (e) {
+        console.warn('[Save] strip-on-save failed; falling back to raw serialize:', e);
+        return de.serialize();
+    }
+}
+
 // Called once per editor — listens for Developer tab clicks to inject button
 function _injectDeveloperTab(editorDiv) {
     if (!editorDiv) return;
@@ -2221,6 +2268,95 @@ function _tryInjectToggle(editorDiv) {
     console.log('[Developer] Toggle button injected');
 }
 
+// ─────────────────────────────────────────────────────────────────────────
+// iPubEdit Meta — top-level Ribbon tab via container.ribbon.addTab
+// (DocumentEditorContainer's ribbon WRAPPER — NOT the underlying EJ2 Ribbon
+// at .e-ribbon.ej2_instances[0]; the wrapper has the contextualTabManager
+// that re-registers contextual tab handlers after addTab).
+// Reference: https://help.syncfusion.com/document-processing/word/word-processor/javascript-es5/how-to/customize-ribbon
+// ─────────────────────────────────────────────────────────────────────────
+function _addIPubEditMetaTab(container) {
+    if (!container) return;
+    var divId = (container.element && container.element.id) || '?';
+    var tag = '[iPubEditMeta:' + divId.slice(0, 11) + ']';
+
+    // container.ribbon is wired AFTER appendTo + first layout. Poll up to 30s.
+    if (!container.ribbon || typeof container.ribbon.addTab !== 'function') {
+        var attempts = (container.__ipubMetaAttempts = (container.__ipubMetaAttempts || 0) + 1);
+        if (attempts > 300) {
+            console.warn(tag + ' container.ribbon never became ready after ' + attempts + ' attempts (~30s)');
+            return;
+        }
+        setTimeout(function () { _addIPubEditMetaTab(container); }, 100);
+        return;
+    }
+    var ribbon = container.ribbon;
+
+    // Per-container idempotency. NEVER guard via document.* — multiple editors
+    // share the document; a global hit would block every later instance.
+    try {
+        var existing = ribbon.tabManager && ribbon.tabManager.tabCollection;
+        if (existing) {
+            for (var i = 0; i < existing.length; i++) {
+                var h = existing[i] && (existing[i].header || (existing[i].tabHeader && existing[i].tabHeader.header));
+                if (String(h || '').trim() === 'iPubEdit Meta') {
+                    console.log(tag + ' already present, skip');
+                    return;
+                }
+            }
+        }
+    } catch (e) { /* fall through, addTab will throw if truly duplicate */ }
+
+    // Unique id per container so rendered DOM IDs don't collide across editors.
+    var uid = (divId.replace(/[^a-zA-Z0-9]/g, '') || ('e' + Date.now()));
+
+    var ribbonTab = {
+        header: 'iPubEdit',
+        id: 'ipub_edit_meta_tab_' + uid,
+        groups: [{
+            header: 'Meta',
+            id: 'ipub_edit_meta_group_' + uid,
+            collections: [{
+                items: [
+                    {
+                        type: 'Button',
+                        buttonSettings: {
+                            content: 'Meta',
+                            iconCss: 'e-icons e-edit',
+                            clicked: function () {
+                                var bridge = document.getElementById('nBtnMeta');
+                                if (bridge) bridge.click();
+                            }
+                        }
+                    },
+                    {
+                        type: 'Button',
+                        buttonSettings: {
+                            content: 'Properties',
+                            iconCss: 'e-icons e-settings',
+                            clicked: function () {
+                                if (window.IPubProperties && typeof window.IPubProperties.toggle === 'function')
+                                    window.IPubProperties.toggle();
+                                else {
+                                    var bridge = document.getElementById('nBtnProperties');
+                                    if (bridge) bridge.click();
+                                }
+                            }
+                        }
+                    }
+                ]
+            }]
+        }]
+    };
+
+    try {
+        ribbon.addTab(ribbonTab);
+        console.log(tag + ' tab added via container.ribbon.addTab');
+    } catch (e) {
+        console.warn(tag + ' container.ribbon.addTab failed:', e);
+    }
+}
+
 function _updateToggleBtn(btn, visible) {
     if (!btn) return;
     var label = btn.querySelector('.dev-btn-label');
@@ -2247,7 +2383,7 @@ function _updateToggleBtn(btn, visible) {
 // ══════════════════════════════════════════════════════════════════════════
 
 // Watch for the ribbon to appear and inject immediately (no setTimeout flash)
-function _watchForRibbon(divId) {
+function _watchForRibbon(divId, container) {
     var editorDiv = document.getElementById(divId);
     if (!editorDiv) return;
 
@@ -2256,6 +2392,7 @@ function _watchForRibbon(divId) {
     if (tabHeader) {
         _injectDeveloperTab(editorDiv);
         _injectUnifiedHeader(editorDiv);
+        _addIPubEditMetaTab(container);
         return;
     }
 
@@ -2266,6 +2403,7 @@ function _watchForRibbon(divId) {
             observer.disconnect();
             _injectDeveloperTab(editorDiv);
             _injectUnifiedHeader(editorDiv);
+            _addIPubEditMetaTab(container);
         }
     });
     observer.observe(editorDiv, { childList: true, subtree: true });
@@ -2291,17 +2429,6 @@ function _injectUnifiedHeader(editorDiv) {
     var right = document.createElement('div');
     right.className = 'n-ribbon-right';
     right.innerHTML =
-        // iPubEdit / Meta
-        '<button class="n-rbtn n-rbtn-meta" title="iPubEdit Meta Information" style="gap:5px;padding:4px 10px;font-weight:600;font-size:.73rem;">' +
-            '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">' +
-                '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>' +
-                '<polyline points="14 2 14 8 20 8"/>' +
-                '<line x1="9" y1="13" x2="15" y2="13"/>' +
-                '<line x1="9" y1="17" x2="13" y2="17"/>' +
-            '</svg>' +
-            '<span>iPubEdit Meta</span>' +
-        '</button>' +
-        '<span class="n-ribbon-divider"></span>' +
         // Search
         '<button class="n-rbtn n-rbtn-icon n-rbtn-search" title="Find & Replace (Ctrl+F)">' +
             '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">' +
@@ -2378,7 +2505,6 @@ function _injectUnifiedHeader(editorDiv) {
             if (t) t.click();
         });
     };
-    fwd('n-rbtn-meta', 'nBtnMeta');
     fwd('n-rbtn-search', 'nBtnSearch');
     fwd('n-rbtn-focus', 'nBtnFocusMode');
     fwd('n-rbtn-theme', 'nBtnTheme');
@@ -2528,6 +2654,24 @@ function _applyTagVisibility(visible) {
 
             if (visible) {
                 // ── SHOW TAGS ──
+                // Fast path: caches still valid (no edits since last toggle).
+                // Skip serialize + parse + insertMarkers + stringify; reuse markedSfdt directly.
+                // contentChange handler nulls these caches on any real user edit, so reaching
+                // here guarantees the cached marked SFDT matches the current document.
+                if (tabState.cleanSfdt && tabState.markedSfdt) {
+                    var toFast = performance.now();
+                    tabState._loadingDocument = true;
+                    de.open(tabState.markedSfdt);
+                    setTimeout(function () { tabState._loadingDocument = false; }, 100);
+                    console.log('[Toggle:' + seq + '] de.open(cached marked) took ' + (performance.now() - toFast).toFixed(0) + 'ms (cache hit, ' + Math.round(tabState.markedSfdt.length / 1024) + 'KB)');
+                    de.focusIn();
+                    _setTabTagsVisible(true);
+                    _markNavPaneClosed(capturedTabId);
+                    console.log('[Toggle:' + seq + '] ── Total: ' + (performance.now() - t0).toFixed(0) + 'ms (cache hit) ──');
+                    _restoreDevTab(capturedTabId, capturedDivId, seq);
+                    return;
+                }
+
                 // ALWAYS serialize fresh — never trust stale cleanSfdt
                 var ts1 = performance.now();
                 var freshClean = de.serialize();
@@ -2562,7 +2706,9 @@ function _applyTagVisibility(visible) {
                 console.log('[Toggle:' + seq + '] JSON.stringify() took ' + (performance.now() - tj).toFixed(0) + 'ms (' + Math.round(tabState.markedSfdt.length / 1024) + 'KB)');
 
                 var to = performance.now();
+                tabState._loadingDocument = true;
                 de.open(tabState.markedSfdt);
+                setTimeout(function () { tabState._loadingDocument = false; }, 100);
                 console.log('[Toggle:' + seq + '] de.open(marked) took ' + (performance.now() - to).toFixed(0) + 'ms');
 
 
@@ -2581,15 +2727,23 @@ function _applyTagVisibility(visible) {
                     var stripped = JSON.stringify(parsed);
 
                     var to3 = performance.now();
+                    tabState._loadingDocument = true;
                     de.open(stripped);
+                    setTimeout(function () { tabState._loadingDocument = false; }, 100);
                     console.log('[Toggle:' + seq + '] de.open(stripped) took ' + (performance.now() - to3).toFixed(0) + 'ms (' + Math.round(stripped.length / 1024) + 'KB)');
                     tabState._editedInTagView = false;
+                    // Cache stripped as new clean baseline; markedSfdt stays null
+                    // (will be rebuilt on next SHOW since structure changed).
+                    tabState.cleanSfdt = stripped;
+                    tabState.markedSfdt = null;
                 } else {
                     // No edits — safe to restore the original clean SFDT
                     var stored = tabState.cleanSfdt;
                     if (stored) {
                         var to2 = performance.now();
+                        tabState._loadingDocument = true;
                         de.open(stored);
+                        setTimeout(function () { tabState._loadingDocument = false; }, 100);
                         console.log('[Toggle:' + seq + '] de.open(clean) took ' + (performance.now() - to2).toFixed(0) + 'ms (' + Math.round(stored.length / 1024) + 'KB)');
                     } else {
                         console.warn('[Toggle:' + seq + '] No clean SFDT stored — nothing to restore');
@@ -2598,8 +2752,8 @@ function _applyTagVisibility(visible) {
                         return;
                     }
                 }
-                // Clear ALL cache — next SHOW will serialize fresh
-                _invalidateTabCache(tabState);
+                // Caches kept; next SHOW reuses markedSfdt via the fast path above.
+                // Edits invalidate via contentChange handler.
             }
 
             de.focusIn();
@@ -3486,6 +3640,11 @@ function _ipubGetMetaValue(meta, field) {
 // Returns { replaced, skipped, unmapped: [..up to 3 tag names..] }.
 window.applyMetadata = function (meta) {
     if (!meta) return { replaced: 0, skipped: 0, unmapped: [] };
+    // Expose XmlType for the iPubEdit Properties panel (chooses Book vs Journal tree)
+    try {
+        window.__ipubEditMeta = meta;
+        if (meta.XmlType) localStorage.setItem('ipubedit.meta.xmlType', meta.XmlType);
+    } catch (e) {}
     if (!container || !container.documentEditor) {
         console.warn('[iPubEdit] No active editor — skipping applyMetadata');
         return { replaced: 0, skipped: 0, unmapped: [] };

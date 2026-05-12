@@ -141,13 +141,13 @@ namespace Deditor.Server.Controllers
         }
 
         [HttpPost("save")]
-        public IActionResult Save([FromBody] SaveParameter data)
+        public async Task<IActionResult> Save([FromBody] SaveParameter data)
         {
             if (data == null || string.IsNullOrEmpty(data.Content))
                 return BadRequest("No content received.");
             try
             {
-                var docStream = _documentService.Save(data.Content, data.FileName ?? "document.docx");
+                var docStream = await _documentService.SaveAsync(data.Content, data.FileName ?? "document.docx");
                 var mime = DocumentService.GetMimeType(data.FileName ?? "document.docx");
                 return File(docStream, mime, data.FileName ?? "document.docx");
             }
@@ -155,10 +155,10 @@ namespace Deditor.Server.Controllers
         }
 
         [HttpPost("systemclipboard")]
-        public IActionResult SystemClipboard([FromBody] CustomParameter param)
+        public async Task<IActionResult> SystemClipboard([FromBody] CustomParameter param)
         {
             if (string.IsNullOrEmpty(param?.Content)) return Ok(string.Empty);
-            var sfdt = _documentService.SystemClipboard(param.Content, param.Type ?? "html");
+            var sfdt = await _documentService.SystemClipboardAsync(param.Content, param.Type ?? "html");
             return Ok(sfdt);
         }
 

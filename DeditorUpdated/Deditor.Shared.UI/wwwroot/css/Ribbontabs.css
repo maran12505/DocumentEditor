@@ -415,11 +415,13 @@ button.dev-cc-toggle.e-btn.active .dev-cc-icon svg {
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 24px;
-    height: 24px;
+    width: 32px;
+    height: 32px;
     color: inherit !important;
 }
 .dev-cc-icon svg {
+    width: 32px;
+    height: 32px;
     stroke: #5A5750;
     transition: stroke .15s;
 }
@@ -427,7 +429,7 @@ button.dev-cc-toggle.e-btn.active .dev-cc-icon svg {
 /* Label */
 button.dev-cc-toggle .dev-btn-label {
     display: block;
-    font-size: .65rem;
+    font-size: .6875rem;
     font-weight: 500;
     line-height: 1.2;
     white-space: nowrap;
@@ -757,4 +759,49 @@ button[id$="_sim_grp_overflow"] {
 }
 [data-theme="dark"] .e-ribbon-tab-item::-webkit-scrollbar-thumb:hover {
     background: #6B6860;
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   COMPACT RIBBON TAB SPACING (Word-style)
+   Tightens horizontal gaps between top-level tabs without affecting
+   the contextual-tab behaviour that lives in the block above
+   (.e-ribbon-contextual-tab styles are unaffected — they keep their own
+   background/border styling; we only change padding which is generic).
+   Append-only override; no Syncfusion source files modified.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+/* Tab wrap (the clickable rectangle) — keep tight horizontal padding.
+   Vertical padding unchanged so tab height stays consistent with ribbon. */
+.e-de-ctnr-ribbon .e-ribbon .e-tab-header .e-toolbar-item .e-tab-wrap,
+.e-de-ribbon .e-tab-header .e-toolbar-item .e-tab-wrap,
+.e-ribbon .e-tab-header .e-toolbar-item .e-tab-wrap {
+    padding: 6px 2px !important;
+}
+
+/* Tab label padding — this is the real driver of inter-tab spacing.
+   Reduce horizontal from 8px → 4px (≈ Word). Keep vertical the same. */
+.e-de-ctnr-ribbon .e-ribbon .e-tab-header .e-toolbar-item .e-tab-text,
+.e-de-ribbon .e-tab-header .e-toolbar-item .e-tab-text,
+.e-ribbon.e-rbn .e-ribbon-tab .e-tab-header .e-toolbar-item .e-tab-text,
+.e-ribbon .e-tab-header .e-toolbar-item .e-tab-text {
+    padding: 10px 4px !important;
+}
+
+/* Defensive: kill any flex gap on the tab-items container so reduced
+   padding actually translates into less inter-tab whitespace. */
+.e-de-ctnr-ribbon .e-ribbon .e-tab-header .e-toolbar-items,
+.e-de-ribbon .e-tab-header .e-toolbar-items,
+.e-ribbon .e-tab-header .e-toolbar-items {
+    gap: 0 !important;
+    column-gap: 0 !important;
+}
+
+/* Defensive: zero margin on every tab item (the existing rule already does
+   this but contextual tabs occasionally pick up margin from base theme;
+   re-asserting here keeps Home…Developer + contextual + iPubEdit Meta
+   evenly spaced). */
+.e-de-ctnr-ribbon .e-ribbon .e-tab-header .e-toolbar-item,
+.e-de-ribbon .e-tab-header .e-toolbar-item,
+.e-ribbon .e-tab-header .e-toolbar-item {
+    margin: 0 !important;
 }
